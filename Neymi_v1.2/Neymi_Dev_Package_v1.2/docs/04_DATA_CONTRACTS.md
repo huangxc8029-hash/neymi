@@ -34,7 +34,7 @@ interface RecipientResearch {
 interface CandidateSelfFact { id: ID; text: string; category: string; origin: 'user_text'|'ai_extracted'; }
 interface ConfirmedSelfFact extends CandidateSelfFact { confirmedAt: ISOTime; revision: number; }
 interface ProfileItem {
- id: ID; label: string; value: string; sensitivity: 'ordinary'|'sensitive'; confirmedFactId?: ID;
+ id: ID; label: string; value: string; valueKind?: 'text'|'phone'|'email'|'address'; sensitivity: 'ordinary'|'sensitive'; confirmedFactId?: ID;
 }
 interface ProfileModule { id: ID; kind: string; title: string; items: ProfileItem[]; }
 interface LocalProfile {
