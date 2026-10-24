@@ -1,0 +1,25 @@
+{
+  "fixtureOnly": true,
+  "kind": "scenario_seed_not_runtime_contract",
+  "warning": "Fictional test inputs only; no live search or verified real people.",
+  "selfFacts": [
+    {"id": "fact_robotics", "text": "Built a fictional warehouse robot demo", "confirmed": true},
+    {"id": "fact_community", "text": "Organized a fictional technical workshop", "confirmed": true}
+  ],
+  "cases": [
+    {
+      "recipientId": "demo_recipient_one",
+      "inputKind": "text",
+      "introduction": "Fictional robotics product lead seeking deployment examples",
+      "expectedProofPointId": "fact_robotics",
+      "provenance": "user_provided"
+    },
+    {
+      "recipientId": "demo_recipient_two",
+      "inputKind": "text",
+      "introduction": "Fictional community organizer seeking workshop partners",
+      "expectedProofPointId": "fact_community",
+      "provenance": "user_provided"
+    }
+  ]
+}
