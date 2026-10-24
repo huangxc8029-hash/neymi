@@ -6,7 +6,9 @@ const text = z.string().trim().min(1).max(20000);
 const isoTime = z.iso.datetime({ offset: true });
 const unique = (values: string[]) => new Set(values).size === values.length;
 const issue = (ctx: z.RefinementCtx, message: string) => ctx.addIssue({ code: 'custom', message });
-const safeCopy = shortText.refine(value => !/(?:[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\+?\d[\d\s().-]{7,}\d|\b\d{1,5}\s+\w+(?:\s+\w+){0,3}\s+(?:street|st|road|rd|avenue|ave|lane|ln|boulevard|blvd)\b)/i.test(value), 'Contact details do not belong in an AI recipe');
+const contactPattern=/(?:[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\+?\d[\d\s().-]{7,}\d|\b\d{1,5}\s+\w+(?:\s+\w+){0,3}\s+(?:street|st|road|rd|avenue|ave|lane|ln|boulevard|blvd)\b)/i;
+export const containsContact=(value:string)=>contactPattern.test(value);
+const safeCopy = shortText.refine(value => !containsContact(value), 'Contact details do not belong in an AI recipe');
 const mime = z.enum(['image/png', 'image/jpeg', 'image/webp']);
 const layout = z.enum(['editorial', 'constellation', 'ribbon']);
 const animation = z.enum(['float', 'keys', 'orbit']);
@@ -40,7 +42,9 @@ export const candidateSelfFactSchema = z.strictObject({id,text,category:shortTex
 export const confirmedSelfFactSchema = candidateSelfFactSchema.extend({confirmedAt:isoTime,revision:z.int().positive()});
 const fact = confirmedSelfFactSchema;
 export const profileItemSchema = z.strictObject({id,label:shortText,value:text,valueKind:z.enum(['text','phone','email','address']).optional(),
-  sensitivity:z.enum(['ordinary','sensitive']),confirmedFactId:id.optional()}).refine(item => !item.valueKind || item.valueKind === 'text' || item.sensitivity === 'sensitive','Contact values must be sensitive');
+  sensitivity:z.enum(['ordinary','sensitive']),confirmedFactId:id.optional()})
+  .refine(item => item.sensitivity==='sensitive'||((!item.valueKind||item.valueKind==='text')&&!containsContact(item.value)),
+    'Contact values must be sensitive');
 const profileItem = profileItemSchema;
 export const profileModuleSchema = z.strictObject({id,kind:shortText,title:shortText,items:z.array(profileItem)}).refine(section => unique(section.items.map(item => item.id)), 'Duplicate item ID');
 const profileModule = profileModuleSchema;
