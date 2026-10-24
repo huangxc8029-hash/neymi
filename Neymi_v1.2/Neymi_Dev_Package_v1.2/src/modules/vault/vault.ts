@@ -53,6 +53,7 @@ export class Vault{
     if(!raw) throw vaultError('NOT_FOUND','Profile not saved');
     return localProfileSchema.parse(JSON.parse(raw));
   }
+  async loadPublicProfile():Promise<LocalProfile>{return this.publicProfile();}
   async readFields(refs:FieldRef[]):Promise<ProfileItem[]>{
     const profile=await this.publicProfile();
     const ordinary=new Map(profile.modules.flatMap(section=>section.items.map(item=>[`${section.id}/${item.id}`,item] as const)));
