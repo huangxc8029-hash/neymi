@@ -5,6 +5,7 @@ import type {LocalDraft,LocalProfile,ManualCardConfig} from '../domain/types';
 import {CardEditor} from '../modules/card/editor';
 import {CardRenderer} from '../modules/card/renderer';
 import {createManualDraft} from '../modules/card/create';
+import {SharePreview} from '../modules/sharing/preview';
 import {IndexedDbVaultStorage} from '../modules/vault/storage';
 import {createVault} from '../modules/vault/vault';
 import '../modules/card/styles.css';
@@ -37,7 +38,7 @@ export default function Home(){
     <div className="studio">
       <CardEditor profile={profile} onChange={setProfile} onPreview={preview}/>
       <div className="preview-panel"><p className="eyebrow">02 · 即时预览</p>
-        {draft?<CardRenderer draft={draft}/>:<p>填写展示名称，立即预览。接下来还能为不同的人准备不同版本。</p>}
+        {draft?<><CardRenderer draft={draft}/><SharePreview key={draft.profileRevision} draft={draft}/></>:<p>填写展示名称，立即预览。接下来还能为不同的人准备不同版本。</p>}
         {message&&<p role="status">{message}</p>}
       </div>
     </div>

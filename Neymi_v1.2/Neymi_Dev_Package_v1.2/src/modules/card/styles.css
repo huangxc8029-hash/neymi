@@ -17,3 +17,9 @@
 @keyframes cardFloat{50%{transform:translateY(-5px)}}@keyframes cardBlink{50%{opacity:.25}}@keyframes cardGlow{50%{filter:hue-rotate(10deg)}}
 @media(max-width:800px){.studio{grid-template-columns:1fr}.preview-panel{order:-1}}@media(max-width:420px){.cyber-card{border-radius:14px;padding:16px}.card-label{display:none}.card-main h2{font-size:27px}}
 @media(prefers-reduced-motion:reduce){.cyber-card,.cyber-card *{animation:none!important;scroll-behavior:auto!important}}
+.share-panel{margin-top:34px;padding:22px;border:1px solid #c8d7ca;border-radius:16px;background:#ffffffa8;display:grid;gap:12px}
+.share-panel h2,.share-panel h3{margin:0}.share-panel p{line-height:1.5}.share-panel label{display:flex;gap:10px;align-items:start;overflow-wrap:anywhere}
+.share-panel button{border:0;border-radius:9px;background:#164c3a;color:white;padding:11px 15px;cursor:pointer}
+.share-panel button:focus-visible{outline:3px solid #246f54;outline-offset:2px}
+.share-confirmation{min-width:0}.share-confirmation pre{max-height:260px;overflow:auto;background:#ecf0ea;padding:14px;border-radius:10px;font-size:12px}
+.share-actions{display:flex;flex-wrap:wrap;gap:10px}
