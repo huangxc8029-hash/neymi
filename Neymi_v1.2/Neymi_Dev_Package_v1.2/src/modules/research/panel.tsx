@@ -1,18 +1,21 @@
 'use client';
 import {useRef,useState} from 'react';
-import type {RecipientResearch} from '../../domain/types';
+import type {InteractionContext,RecipientResearch} from '../../domain/types';
 
-export function ResearchPanel(){
+export function ResearchPanel({onResearch}:{onResearch?:(research:RecipientResearch|null,context:InteractionContext|null)=>void}){
   const [recipient,setRecipient]=useState(''),[scenario,setScenario]=useState(''),[kind,setKind]=useState<'text'|'public_url'>('text');
   const [research,setResearch]=useState<RecipientResearch|null>(null),[status,setStatus]=useState(''),[busy,setBusy]=useState(false);
+  const [interaction,setInteraction]=useState<InteractionContext|null>(null);
   const generation=useRef(0),jobId=useRef('');
   async function start(){
     const current=++generation.current;setBusy(true);setResearch(null);setStatus('');
+    onResearch?.(null,null);
     try{
       if(jobId.current)await fetch(`/v1/research/${encodeURIComponent(jobId.current)}`,{method:'DELETE'}).catch(()=>{});
       const session=await fetch('/v1/session',{method:'POST'});if(!session.ok)throw new Error('无法建立匿名会话。');
       if(current!==generation.current)return;
-      const context={id:'recipient_context',scenario:scenario.trim(),goal:{id:'recipient_goal',goalType:'other',specificAsk:scenario.trim()}};
+      const context:InteractionContext={id:'recipient_context',scenario:scenario.trim(),goal:{id:'recipient_goal',goalType:'other',specificAsk:scenario.trim()}};
+      setInteraction(context);
       const response=await fetch('/v1/research',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({input:{kind,value:recipient.trim(),contextId:context.id},context})});
       const started=await response.json();if(!response.ok)throw new Error(started.error?.message??'研究暂不可用。');
       jobId.current=started.jobId;
@@ -23,7 +26,7 @@ export function ResearchPanel(){
         const result=await fetch(`/v1/research/${encodeURIComponent(started.jobId)}`),body=await result.json();
         if(!result.ok)throw new Error(body.error?.message??'无法读取研究结果。');
         if(current!==generation.current)return;
-        setResearch(body.research);
+        setResearch(body.research);onResearch?.(body.research,context);
         if(body.research.state!=='researching'){
           setStatus(body.research.state==='needs_confirmation'?'请确认公开来源对应的接收人。':body.research.state==='partial'?'没有找到足够来源。':body.research.state==='failed'?'研究服务暂不可用。':'');
           setBusy(false);return;
@@ -41,7 +44,8 @@ export function ResearchPanel(){
     const response=await fetch(`/v1/research/${encodeURIComponent(jobId.current)}/confirm`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({candidateId:research.recipient.id})});
     const body=await response.json();
     if(!response.ok){setStatus(body.error?.message??'无法确认接收人。');return;}
-    setResearch({...research,state:'ready',recipient:{...research.recipient,identityStatus:'verified'}});setStatus('已确认接收人身份。');
+    const confirmed={...research,state:'ready' as const,recipient:{...research.recipient,identityStatus:'verified' as const}};
+    setResearch(confirmed);if(interaction)onResearch?.(confirmed,interaction);setStatus('已确认接收人身份。');
   }
   return <section style={{marginTop:56,borderTop:'1px solid #ddd',paddingTop:28}}>
     <p className="eyebrow">下一步 · 单人公开研究</p><h2>为一位接收人做准备</h2>

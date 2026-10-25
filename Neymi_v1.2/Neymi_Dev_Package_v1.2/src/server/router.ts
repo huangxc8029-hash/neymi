@@ -4,12 +4,14 @@ import {ApiError,invalidRequest,notFound} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
 import {getResearchService} from './research-runtime';
+import {planStrategy} from '../modules/strategy/plan';
 import {ZodError} from 'zod';
 import {z} from 'zod';
 const jobInputSchema=z.strictObject({kind:z.literal('context'),context:z.unknown()});
 const factsInputSchema=z.strictObject({context:z.unknown()});
 const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()});
 const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
+const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),approvedContext:z.unknown()});
 
 const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers});
 async function readJson(request:Request):Promise<unknown>{
@@ -52,6 +54,13 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=factsInputSchema.parse(await readJson(request));
       await authorizeContext(input.context as never);
       return json({facts:await proposeSelfFacts(input.context as never)});
+    }
+    if(path==='plan'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=planInputSchema.parse(await readJson(request));
+      await authorizeContext(input.approvedContext as never);
+      return json(await planStrategy(input as never));
     }
     if(path==='research'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');

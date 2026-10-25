@@ -1,17 +1,19 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
-import type {CandidateSelfFact,ConfirmedSelfFact} from '../../domain/types';
+import type {CandidateSelfFact,ConfirmedSelfFact,InteractionContext,RecipientResearch} from '../../domain/types';
 import {IndexedDbVaultStorage} from '../../modules/vault/storage';
 import {createVault} from '../../modules/vault/vault';
 import {LocalFactsStore,confirmSelfFact,createContextApproval,detectSensitiveText} from '../../modules/self/facts';
 import {ResearchPanel} from '../../modules/research/panel';
+import {StrategyPanel} from '../../modules/strategy/panel';
 
 export default function PreparePage(){
   const vault=useMemo(()=>createVault(new IndexedDbVaultStorage()),[]);
   const store=useMemo(()=>new LocalFactsStore(vault),[vault]);
   const [text,setText]=useState(''),[facts,setFacts]=useState<ConfirmedSelfFact[]>([]),[candidate,setCandidate]=useState<CandidateSelfFact|null>(null);
   const [edited,setEdited]=useState(''),[status,setStatus]=useState(''),[busy,setBusy]=useState(false);
+  const [manualText,setManualText]=useState(''),[research,setResearch]=useState<RecipientResearch|null>(null),[interaction,setInteraction]=useState<InteractionContext|null>(null);
   const sensitive=detectSensitiveText(text);
   useEffect(()=>{store.list().then(setFacts).catch(()=>setStatus('本地资料暂不可读；请解锁本地资料库后重试。'));},[store]);
   async function askAi(){
@@ -47,7 +49,12 @@ export default function PreparePage(){
       </div>}
       {status&&<p role="status">{status}</p>}
       <h2>已确认的事实（仅本地）</h2><ul>{facts.map(fact=><li key={fact.id}>{fact.text}</li>)}</ul>
-      <ResearchPanel />
+      <label htmlFor="manual-fact">也可以手动整理一条本人事实（只保存在本地）</label>
+      <textarea id="manual-fact" value={manualText} onChange={event=>setManualText(event.target.value)} rows={3} style={{width:'100%'}} />
+      {detectSensitiveText(manualText).length>0&&<p role="alert">联系方式请保存到加密资料区，不要作为普通事实保存。</p>}
+      <button type="button" disabled={!manualText.trim()||detectSensitiveText(manualText).length>0} onClick={()=>{const id=`fact_${crypto.randomUUID().replaceAll('-','')}`;void saveFact({id,text:manualText,category:'experience',origin:'user_text'},manualText);setManualText('');}}>确认并保存事实</button>
+      <ResearchPanel onResearch={(value,context)=>{setResearch(value);setInteraction(context);}} />
+      {research&&interaction&&<StrategyPanel research={research} context={interaction} facts={facts} />}
     </section>
     <footer>是否发送由你决定 · AI 建议不等于已确认事实</footer>
   </main>;

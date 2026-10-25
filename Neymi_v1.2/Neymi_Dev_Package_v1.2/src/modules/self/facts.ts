@@ -19,7 +19,8 @@ function digest(text:string):Promise<string>{
   return crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)).then(bytes=>Array.from(new Uint8Array(bytes),value=>value.toString(16).padStart(2,'0')).join(''));
 }
 export function cloudContextText(text:string,facts:ConfirmedSelfFact[]=[]):string{
-  return facts.length?`${text}\n\nConfirmed professional facts:\n${facts.map(fact=>`- ${fact.text}`).join('\n')}`:text;
+  const conversation=text.trim();
+  return facts.length?`${conversation?`${conversation}\n\n`:''}Confirmed professional facts:\n${facts.map(fact=>`- [${fact.id}] ${fact.text.replace(/\s+/g,' ').trim()}`).join('\n')}`:conversation;
 }
 export async function createContextApproval(text:string,contextId:string,purpose:string,now:string,facts:ConfirmedSelfFact[]=[]):Promise<CloudContextApproval>{
   const outgoing=cloudContextText(text,facts);
@@ -33,7 +34,7 @@ export async function buildCloudContext(text:string,facts:ConfirmedSelfFact[],ap
   return value;
 }
 export function confirmSelfFact(candidate:CandidateSelfFact,editedText:string,now:string):ConfirmedSelfFact{
-  const value:ConfirmedSelfFact={...candidate,text:editedText,confirmedAt:now,revision:1};
+  const value:ConfirmedSelfFact={...candidate,text:editedText.replace(/\s+/g,' ').trim(),confirmedAt:now,revision:1};
   confirmedSelfFactSchema.parse(value);
   if(detectSensitiveText(editedText).length)throw permissionDenied();
   return value;
