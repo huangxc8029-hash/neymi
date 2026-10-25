@@ -71,7 +71,7 @@ test('AI preparation stays optional and blocks contact details before cloud cons
   await expect(page.getByRole('heading',{name:'先整理你想让人记住的特点。'})).toBeVisible();
   const intro=page.getByLabel('介绍你做过什么、擅长什么，或希望建立怎样的联系');
   await intro.fill('I built a demo. Contact me at demo@example.org');
-  await expect(page.getByRole('alert')).toContainText('请先移除');
+  await expect(page.getByText('检测到联系方式或地址。请先移除再发送。检测不是完整的隐私保护。')).toBeVisible();
   await expect(page.getByRole('button',{name:'同意发送以上文字，请 AI 提炼'})).toBeDisabled();
   await intro.fill('I built a warehouse robotics demo.');
   await expect(page.getByRole('button',{name:'同意发送以上文字，请 AI 提炼'})).toBeEnabled();

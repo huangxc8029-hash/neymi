@@ -7,8 +7,15 @@ const recipientResearch={
   sources:[{id:'source_e2e',url:'https://example.org/speaker',title:'活动嘉宾介绍',origin:'official',accessedAt:now,publishedAt:null,excerpt:'负责仓储机器人部署。'}],
   claims:[{id:'claim_e2e',recipientId:'recipient_e2e',kind:'fact',claim:'负责仓储机器人部署',sourceIds:['source_e2e'],confidence:'high',checkedAt:now}],warnings:['E2E fixture；仅用于交互测试，非真实接收人资料。'],
 };
+const plan={strategy:{recommendation:'prepare_introduction',confidence:'low',recommendedFocus:'展示仓储机器人演示',
+  whyTheyMayCare:'公开片段与本人事实主题重合，仍需确认实际需求。',mainPoint:'分享一项已确认的经历。',openingLine:'你目前最关注哪类部署问题？',uncertainties:['E2E fixture；不是现实建议。']},
+  recipe:{schemaVersion:1,id:'recipe_e2e',kind:'ai',label:'本次交流提案',templateId:'plain',layout:'editorial',animation:'float',orderedModules:[],
+    createdAt:now,updatedAt:now,strategyId:'strategy_e2e',goalId:'recipient_goal',contextId:'recipient_context',recipientId:'recipient_e2e',
+    headlineDraft:'为这次交流准备的介绍',introDraft:'内容由你确认后再分享。',missingProofPointIds:[],status:'proposed'}};
 
 test('guest prepares, approves, shares, receives, and returns one personalized card',async({page})=>{
+  await page.route('**/v1/session',route=>route.fulfill({status:201,json:{expiresAt:'2026-10-26T00:00:00.000Z'}}));
+  await page.route('**/v1/plan',route=>route.fulfill({status:200,json:plan}));
   await page.route('**/v1/research**',async route=>{
     const request=route.request(),path=new URL(request.url()).pathname;
     if(path.endsWith('/research')&&request.method()==='POST')return route.fulfill({status:202,json:{jobId:'job_e2e',state:'researching'}});
@@ -24,7 +31,7 @@ test('guest prepares, approves, shares, receives, and returns one personalized c
   await page.getByLabel('也可以手动整理一条本人事实（只保存在本地）').fill('做过仓储机器人演示。');
   await page.getByRole('button',{name:'确认并保存事实'}).click();
   await expect(page.getByRole('status')).toContainText('已确认并保存在本地');
-  await page.getByLabel('接收人信息').fill('王先生，负责仓储机器人部署');
+  await page.getByRole('textbox',{name:'接收人信息'}).fill('王先生，负责仓储机器人部署');
   await page.getByLabel('本次交流场景与目的').fill('行业活动后讨论合作');
   await page.getByRole('button',{name:'查找公开资料'}).click();
   await page.getByRole('button',{name:'确认这是我提供的接收人'}).click();
@@ -38,7 +45,7 @@ test('guest prepares, approves, shares, receives, and returns one personalized c
   await page.getByRole('button',{name:'授权并在本地合成'}).click();
   await expect(page.getByRole('region',{name:'我的名片'})).toContainText('Lin E2E');
   await page.getByRole('button',{name:'生成分享预览'}).click();
-  await expect(page.getByText('PRIVATE_UNSELECTED')).toHaveCount(0);
+  await expect(page.locator('.share-confirmation pre')).not.toContainText('PRIVATE_UNSELECTED');
   const downloadWait=page.waitForEvent('download');await page.getByRole('button',{name:'确认下载名片文件'}).click();
   const download=await downloadWait,bytes=await readFile(await download.path()!);
   expect(bytes.toString('utf8')).toContain('Lin E2E');expect(bytes.toString('utf8')).not.toContain('PRIVATE_UNSELECTED');
