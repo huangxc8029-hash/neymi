@@ -9,6 +9,7 @@ import {createManualDraft} from '../modules/card/create';
 import {SharePreview} from '../modules/sharing/preview';
 import {IndexedDbVaultStorage} from '../modules/vault/storage';
 import {createVault} from '../modules/vault/vault';
+import {PreparedStore} from '../modules/prepared/store';
 import '../modules/card/styles.css';
 
 const initial:LocalProfile={schemaVersion:1,id:'guest_profile',revision:1,identity:{},modules:[],facts:[],assets:[]};
@@ -24,6 +25,7 @@ export default function Home(){
       const config:ManualCardConfig={schemaVersion:1,id:'card_guest',kind:'manual',label:'我的名片',templateId:'plain',layout:'editorial',animation:'float',
         orderedModules:profile.modules.map(section=>({localModuleId:section.id,kind:section.kind,emphasis:'normal'})),createdAt:now,updatedAt:now};
       await vault.saveProfile(profile);
+      await new PreparedStore(vault.storage).markStale(profile.revision);
       setDraft(createManualDraft(profile,config));setMessage('已保存在此浏览器。');
     }catch(error){
       setMessage(error instanceof ZodError?'检测到联系方式。请在本地加密资料区保存这类信息。':
@@ -44,6 +46,6 @@ export default function Home(){
       </div>
     </div>
     <p style={{textAlign:'center',marginTop:32}}><Link href="/prepare">为不同接收人准备更有表现力的 AI 名片</Link></p>
-    <footer>免注册的基础体验 · 本地优先 · 分享由你决定</footer>
+    <footer>免注册的基础体验 · 本地优先 · 分享由你决定 · <Link href="/cards">我的准备卡</Link></footer>
   </main>;
 }
