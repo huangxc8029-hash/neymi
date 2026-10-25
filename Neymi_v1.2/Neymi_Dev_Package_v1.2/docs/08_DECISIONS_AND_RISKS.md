@@ -15,6 +15,7 @@
 | ADR-009 | Accepted product design | 保存敏感字段才建口令 vault，加密备份/恢复，免费基础不设口令墙 |
 | ADR-010 | Implementation default | 24h 提案、30d 发布、来源/时间/配额限制；真实运行前验证 |
 | ADR-011 | Proposed implementation | TypeScript Web/PWA、同源 API、IndexedDB、服务端存储适配器；A00 锁定依赖 |
+| ADR-012 | Pilot only | 运行环境 Node 24 的内置 SQLite 用于匿名提案任务；该 API 仍标为实验功能，部署需要持久卷与版本锁定，生产规模前替换为稳定驱动 |
 
 ADR-005–010 详见新增文件。技术栈为计划默认，不伪称用户指定供应商。
 
