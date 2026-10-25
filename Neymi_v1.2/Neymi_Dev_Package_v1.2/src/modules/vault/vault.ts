@@ -1,23 +1,26 @@
-import type {FieldRef,LocalAsset,LocalProfile,ProfileItem} from '../../domain/types';
-import {localProfileSchema} from '../../domain/schemas';
+import type {FieldRef,LocalAsset,LocalDraft,LocalProfile,ProfileItem} from '../../domain/types';
+import {localDraftSchema,localProfileSchema} from '../../domain/schemas';
 import {deriveKey,fromBase64,KDF_ITERATIONS,open,randomBase64,seal,toBase64} from './crypto';
 import type {VaultStorage} from './storage';
 type Header={version:1;algorithm:'AES-GCM';kdf:'PBKDF2-SHA256';iterations:number;salt:string};
-type Secret={items:Array<{moduleId:string;item:ProfileItem}>;assets:Array<{id:string;mime:LocalAsset['mime'];base64:string}>};
+type Secret={items:Array<{moduleId:string;item:ProfileItem}>;assets:Array<{id:string;mime:LocalAsset['mime'];base64:string}>;preparedDrafts:Array<{id:string;profileRevision:number;payload:string}>};
 const PUBLIC='profile-public',HEADER='vault-header',CIPHER='vault-cipher';
-const emptySecret=():Secret=>({items:[],assets:[]});
+const emptySecret=():Secret=>({items:[],assets:[],preparedDrafts:[]});
 export const vaultError=(code:string,message:string)=>Object.assign(new Error(message),{code});
 export class Vault{
   private key:CryptoKey|null=null;
   private timer:ReturnType<typeof setTimeout>|null=null;
   constructor(readonly storage:VaultStorage){}
+  async isInitialized():Promise<boolean>{return Boolean(await this.storage.get(HEADER));}
+  isUnlocked():boolean{return this.key!==null;}
   private touch(){if(this.timer) clearTimeout(this.timer);this.timer=setTimeout(()=>this.lock(),15*60*1000);}
   private async secret():Promise<Secret>{
     if(!this.key) throw vaultError('PERMISSION_DENIED','Vault is locked');
     this.touch();
     const cipher=await this.storage.get(CIPHER);
     if(!cipher) throw vaultError('CORRUPT_DATA','Missing encrypted payload');
-    return open<Secret>(this.key,cipher);
+    const value=await open<Partial<Secret>>(this.key,cipher);
+    return{items:value.items??[],assets:value.assets??[],preparedDrafts:value.preparedDrafts??[]};
   }
   async initialize(passphrase:string):Promise<void>{
     if(await this.storage.get(HEADER)) throw vaultError('ALREADY_EXISTS','Vault already initialized');
@@ -38,7 +41,8 @@ export class Vault{
   async saveProfile(profile:LocalProfile):Promise<void>{
     localProfileSchema.parse(profile);
     if(await this.storage.get(HEADER) && !this.key) throw vaultError('PERMISSION_DENIED','Unlock vault before replacing profile');
-    const secret:Secret={items:profile.modules.flatMap(section=>section.items.filter(item=>item.sensitivity==='sensitive').map(item=>({moduleId:section.id,item}))),
+    const previous=this.key?await this.secret():emptySecret();
+    const secret:Secret={...previous,items:profile.modules.flatMap(section=>section.items.filter(item=>item.sensitivity==='sensitive').map(item=>({moduleId:section.id,item}))),
       assets:profile.assets.map(asset=>({id:asset.id,mime:asset.mime,base64:toBase64(asset.bytes)}))};
     const publicProfile={...profile,modules:profile.modules.map(section=>({...section,items:section.items.filter(item=>item.sensitivity==='ordinary')})),assets:[]};
     const changes:Record<string,string|null>={[PUBLIC]:JSON.stringify(publicProfile)};
@@ -75,6 +79,29 @@ export class Vault{
     return ids.map(id=>{const asset=secret.assets.find(asset=>asset.id===id);if(!asset)throw vaultError('NOT_FOUND','Asset does not exist');
       return{id:asset.id,mime:asset.mime,bytes:fromBase64(asset.base64)};});
   }
+  async savePreparedDraft(draft:LocalDraft):Promise<void>{
+    const checked=localDraftSchema.parse(draft),profile=await this.publicProfile();
+    if(!this.key)throw vaultError('PERMISSION_DENIED','Unlock vault before caching prepared cards');
+    if(checked.profileRevision!==profile.revision)throw vaultError('STALE_DATA','Profile changed before the card could be cached');
+    const secret=await this.secret(),payload=JSON.stringify({...checked,assets:checked.assets.map(asset=>({...asset,bytes:toBase64(asset.bytes)}))});
+    secret.preparedDrafts=[...secret.preparedDrafts.filter(item=>item.id!==checked.id),{id:checked.id,profileRevision:checked.profileRevision,payload}];
+    const cipher=await this.storage.get(CIPHER);if(!cipher)throw vaultError('CORRUPT_DATA','Missing encrypted payload');
+    await this.storage.set(CIPHER,await seal(this.key,secret));
+  }
+  async readPreparedDraft(id:string):Promise<LocalDraft|null>{
+    const secret=await this.secret(),entry=secret.preparedDrafts.find(item=>item.id===id);if(!entry)return null;
+    if(entry.profileRevision!==(await this.publicProfile()).revision)return null;
+    const raw=JSON.parse(entry.payload) as Omit<LocalDraft,'assets'>&{assets:Array<{id:string;mime:LocalAsset['mime'];bytes:string}>};
+    return localDraftSchema.parse({...raw,assets:raw.assets.map(asset=>({...asset,bytes:fromBase64(asset.bytes)}))});
+  }
+  async listPreparedDrafts():Promise<LocalDraft[]>{
+    const secret=await this.secret(),revision=(await this.publicProfile()).revision,result:LocalDraft[]=[];
+    for(const entry of secret.preparedDrafts)if(entry.profileRevision===revision){
+      const raw=JSON.parse(entry.payload) as Omit<LocalDraft,'assets'>&{assets:Array<{id:string;mime:LocalAsset['mime'];bytes:string}>};
+      result.push(localDraftSchema.parse({...raw,assets:raw.assets.map(asset=>({...asset,bytes:fromBase64(asset.bytes)}))}));
+    }
+    return result;
+  }
   async snapshot(passphrase:string):Promise<LocalProfile>{
     if(await this.storage.get(HEADER))await this.unlock(passphrase);
     const profile=await this.publicProfile();
@@ -88,7 +115,7 @@ export class Vault{
     const header:Header={version:1,algorithm:'AES-GCM',kdf:'PBKDF2-SHA256',iterations:KDF_ITERATIONS,salt:randomBase64(16)};
     const key=await deriveKey(passphrase,header.salt,header.iterations);
     const secret:Secret={items:profile.modules.flatMap(section=>section.items.filter(item=>item.sensitivity==='sensitive').map(item=>({moduleId:section.id,item}))),
-      assets:profile.assets.map(asset=>({id:asset.id,mime:asset.mime,base64:toBase64(asset.bytes)}))};
+      assets:profile.assets.map(asset=>({id:asset.id,mime:asset.mime,base64:toBase64(asset.bytes)})),preparedDrafts:[]};
     const publicProfile={...profile,modules:profile.modules.map(section=>({...section,items:section.items.filter(item=>item.sensitivity==='ordinary')})),assets:[]};
     await this.storage.transaction({[PUBLIC]:JSON.stringify(publicProfile),[HEADER]:JSON.stringify(header),[CIPHER]:await seal(key,secret)});
     this.lock();

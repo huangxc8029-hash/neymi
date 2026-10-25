@@ -5,6 +5,7 @@ import {projectShare} from './projection';
 import {assertConfirmation,confirmShare} from './confirmation';
 import {renderImage,serializeNcard,serializeVcard} from './export';
 import {PublicationPanel} from '../publication/panel';
+import {shareViaOS} from './native';
 
 export function SharePreview({draft}:{draft:LocalDraft}){
   const [selection,setSelection]=useState<ShareSelection>({identity:['name'],fields:[],assetIds:[]});
@@ -27,6 +28,12 @@ export function SharePreview({draft}:{draft:LocalDraft}){
       anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30_000);setMessage('已生成所选内容的文件。');
     }catch{setMessage('分享内容已变化，请重新预览。');setProjection(null);}
   }
+  async function shareNative(){
+    if(!projection)return;
+    try{const fresh=projectShare(draft,selection),confirmation=await confirmShare(projection,'file');await assertConfirmation(fresh,confirmation,'file');
+      const result=await shareViaOS(fresh);setMessage(result==='shared'?'已交给系统分享。':result==='cancelled'?'你取消了分享。':'系统分享不可用，名片文件已下载。');
+    }catch{setMessage('分享内容已变化，请重新预览。');setProjection(null);}
+  }
   return <section className="share-panel" aria-labelledby="share-title">
     <p className="eyebrow">03 · 由你决定分享</p><h2 id="share-title">选择公开内容</h2>
     <p>导出文件前，请检查将让他人看到的内容。只有勾选的字段会进入文件。</p>
@@ -45,7 +52,8 @@ export function SharePreview({draft}:{draft:LocalDraft}){
       <p>文件可被转发。下载后无法撤回已交给他人的副本。</p>
       <div className="share-actions"><button type="button" onClick={()=>download('file')}>确认下载名片文件</button>
         <button type="button" onClick={()=>download('vcard')}>确认下载 vCard</button>
-        <button type="button" onClick={()=>download('image')}>确认下载图片</button></div>
+        <button type="button" onClick={()=>download('image')}>确认下载图片</button>
+        <button type="button" onClick={shareNative}>确认用系统分享</button></div>
       <PublicationPanel key={JSON.stringify(projection)} projection={projection}/>
     </div>}
     {message&&<p role="status">{message}</p>}

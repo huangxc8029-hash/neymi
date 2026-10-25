@@ -8,6 +8,7 @@ import {composeDraft} from '../card/compose';
 import {CardRenderer} from '../card/renderer';
 import {SharePreview} from '../sharing/preview';
 import {PreparedStore} from '../prepared/store';
+import {cachePreparedCard} from '../sharing/native';
 
 type Plan={strategy:{recommendation:string;confidence:string;recommendedFocus:string;whyTheyMayCare:string;mainPoint:string;openingLine:string;uncertainties:string[]};recipe:CardRecipe};
 export function StrategyPanel({research,context,facts,profile,deviceId,vault}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault}){
@@ -52,9 +53,15 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault}:{r
     catch(error){setStatus(error instanceof Error?error.message:'本地保存失败。');}
     finally{setBusy(false);}
   }
+  async function cacheOffline(){
+    if(!draft||stale)return;setBusy(true);
+    try{await cachePreparedCard(draft,vault);setStatus('已用本地加密保险库保存此版本，可在此设备离线查看。');}
+    catch(error){setStatus(error&&typeof error==='object'&&(error as {code?:string}).code==='PERMISSION_DENIED'?'请先到“我的准备卡”设置或解锁本地加密区，再缓存离线副本。':error instanceof Error?error.message:'加密缓存失败。');}
+    finally{setBusy(false);}
+  }
   return <section style={{marginTop:32,borderTop:'1px solid #ddd',paddingTop:24}}>
     <h3>表达方案</h3><p>仅在接收人身份已确认后生成。你选择的本人事实会随本次请求发送；其他本地资料不会发送。</p>
-    {facts.length?facts.map(fact=><label key={fact.id} style={{display:'block',margin:'8px 0'}}><input type="checkbox" checked={selectedFacts.includes(fact.id)} onChange={event=>setSelectedFacts(current=>event.target.checked?[...current,fact.id]:current.filter(id=>id!==fact.id))}/>{fact.text}</label>):<p>还没有已确认的本人事实。可先手动添加，或使用更谨慎的无事实方案。</p>}
+    {facts.length?facts.map(fact=><label key={fact.id} style={{display:'block',margin:'8px 0'}}><input type="checkbox" aria-label={`选择发送事实：${fact.text}`} checked={selectedFacts.includes(fact.id)} onChange={event=>setSelectedFacts(current=>event.target.checked?[...current,fact.id]:current.filter(id=>id!==fact.id))}/>{fact.text}</label>):<p>还没有已确认的本人事实。可先手动添加，或使用更谨慎的无事实方案。</p>}
     <details><summary>查看本次将发送的场景与公开来源</summary><pre style={{whiteSpace:'pre-wrap'}}>{preview}</pre></details>
     {sensitive.length>0&&<p role="alert">检测到联系方式或地址。移除后才能发送。</p>}
     <label style={{display:'block',margin:'12px 0'}}><input type="checkbox" checked={cloudApproved} onChange={event=>setCloudApproved(event.target.checked)}/>
@@ -75,7 +82,8 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault}:{r
       <label style={{display:'block',margin:'12px 0'}}><input type="checkbox" checked={localApproved} onChange={event=>setLocalApproved(event.target.checked)}/>我同意按所选字段在此设备本地合成。</label>
       {strategyStale&&<p role="alert">本人资料已更改。此方案已过期，请重新生成后再合成。</p>}
       <button type="button" disabled={!localApproved||busy||stale||strategyStale||!selectedIdentity.length&&!selectedFields.length} onClick={compose}>授权并在本地合成</button>
-      {draft&&<><CardRenderer draft={draft}/>{stale?<p role="alert">本人资料已更改。此方案已过期，请重新生成。</p>:<SharePreview draft={draft}/>}<button type="button" disabled={busy||stale||!privateLabel.trim()} onClick={save}>仅本地保存方案</button></>}
+      {draft&&<><CardRenderer draft={draft}/>{stale?<p role="alert">本人资料已更改。此方案已过期，请重新生成。</p>:<SharePreview draft={draft}/>}<button type="button" disabled={busy||stale||!privateLabel.trim()} onClick={save}>仅本地保存方案</button>
+        <button type="button" disabled={busy||stale} onClick={cacheOffline}>加密缓存此名片供离线查看</button></>}
     </article>}
   </section>;
 }

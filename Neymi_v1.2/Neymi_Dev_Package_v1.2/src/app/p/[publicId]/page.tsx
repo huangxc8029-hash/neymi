@@ -3,6 +3,7 @@ import Image from 'next/image';
 import type {ShareProjection} from '../../../domain/types';
 import {getPublicationService} from '../../../server/publication-runtime';
 import {ApiError} from '../../../server/errors';
+import {ReceiveActions} from '../../../modules/sharing/receive-actions';
 
 export const dynamic='force-dynamic';
 export const revalidate=0;
@@ -26,7 +27,7 @@ export default async function PublishedPage({params}:{params:Promise<{publicId:s
   try{projection=await getPublicationService('https://neymi.invalid').readPublication(publicId);}
   catch(error){message=error instanceof ApiError&&error.code==='EXPIRED'?'此公开链接已到期。':error instanceof ApiError&&error.code==='NOT_FOUND'?'此公开链接已撤回或不存在。':'公开服务暂不可用。';}
   return <main className="workspace"><header><Link className="wordmark" href="/">neymi</Link></header>
-    {projection?<div className="preview-panel" style={{maxWidth:720,margin:'48px auto'}}><p className="eyebrow">由持有人选择公开</p><PublicCard projection={projection}/></div>:
+    {projection?<div className="preview-panel" style={{maxWidth:720,margin:'48px auto'}}><p className="eyebrow">由持有人选择公开</p><PublicCard projection={projection}/><ReceiveActions projection={projection}/></div>:
       <div className="hero"><p className="eyebrow">neymi</p><h1>{message}</h1><p className="intro">你仍可在此创建自己的名片。</p><Link href="/">开始制作</Link></div>}
   </main>;
 }
