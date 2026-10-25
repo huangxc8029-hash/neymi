@@ -5,6 +5,7 @@ import type {CandidateSelfFact,ConfirmedSelfFact} from '../../domain/types';
 import {IndexedDbVaultStorage} from '../../modules/vault/storage';
 import {createVault} from '../../modules/vault/vault';
 import {LocalFactsStore,confirmSelfFact,createContextApproval,detectSensitiveText} from '../../modules/self/facts';
+import {ResearchPanel} from '../../modules/research/panel';
 
 export default function PreparePage(){
   const vault=useMemo(()=>createVault(new IndexedDbVaultStorage()),[]);
@@ -46,6 +47,7 @@ export default function PreparePage(){
       </div>}
       {status&&<p role="status">{status}</p>}
       <h2>已确认的事实（仅本地）</h2><ul>{facts.map(fact=><li key={fact.id}>{fact.text}</li>)}</ul>
+      <ResearchPanel />
     </section>
     <footer>是否发送由你决定 · AI 建议不等于已确认事实</footer>
   </main>;

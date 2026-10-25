@@ -35,7 +35,7 @@ export const recipientSchema = z.strictObject({ id, displayName: shortText, orga
   role: shortText.optional(), eventId: id.optional(), identityStatus: z.enum(['verified', 'ambiguous', 'unverified']) });
 export const recipientInputSchema = z.discriminatedUnion('kind', [
   z.strictObject({kind:z.literal('text'),value:text,contextId:id}),
-  z.strictObject({kind:z.literal('public_url'),value:z.url({protocol:/^https?:$/}),contextId:id}),
+  z.strictObject({kind:z.literal('public_url'),value:z.url({protocol:/^https?$/}),contextId:id}),
 ]);
 export const localAssetSchema = z.strictObject({ id, mime, bytes:z.instanceof(Uint8Array).refine(bytes => bytes.byteLength <= 5*1024*1024,'Image exceeds 5 MiB') });
 export const candidateSelfFactSchema = z.strictObject({id,text,category:shortText,origin:z.enum(['user_text','ai_extracted'])});
@@ -74,7 +74,7 @@ export const shareSelectionSchema = z.strictObject({identity:z.array(z.enum(['na
   assetIds:z.array(id),publicDedication:shortText.optional()});
 export const shareConfirmationSchema = z.strictObject({digest:z.string().regex(/^[a-f\d]{64}$/i),
   action:z.enum(['file','image','vcard','publish']),confirmedAt:isoTime});
-export const publicationSchema = z.strictObject({publicId:id,url:z.url({protocol:/^https?:$/}),createdAt:isoTime,
+export const publicationSchema = z.strictObject({publicId:id,url:z.url({protocol:/^https?$/}),createdAt:isoTime,
   expiresAt:isoTime,revokedAt:isoTime.optional()}).refine(publication => Date.parse(publication.expiresAt)>Date.parse(publication.createdAt),'Invalid publication interval');
 export const publicationReceiptSchema = z.strictObject({publication:publicationSchema,revokeToken:shortText});
 export const cloudContextApprovalSchema = z.strictObject({id,contextId:id,contentDigest:z.string().regex(/^[a-f\d]{64}$/i),purpose:shortText,approvedAt:isoTime});
@@ -90,7 +90,7 @@ export const connectionStrategySchema = z.strictObject({id,recipientId:id,goalId
   selectionReasons:z.array(z.strictObject({proofPointId:id,claimIds:z.array(id),reason:shortText})),openingLine:shortText,
   openingQuestions:z.array(shortText).max(2),suggestedNextStep:shortText,misfitRisks:z.array(shortText),
   uncertainties:z.array(shortText),confidence:z.enum(['high','medium','low']),createdAt:isoTime});
-export const researchSourceSchema = z.strictObject({id,url:z.url({protocol:/^https?:$/}).optional(),title:shortText,
+export const researchSourceSchema = z.strictObject({id,url:z.url({protocol:/^https?$/}).optional(),title:shortText,
   origin:z.enum(['official','primary','reputable_news','other','user_provided']),accessedAt:isoTime,publishedAt:isoTime.nullable(),excerpt:text});
 export const researchClaimSchema = z.strictObject({id,recipientId:id,kind:z.enum(['fact','explicit_preference','inference','unknown']),
   claim:text,sourceIds:z.array(id),confidence:z.enum(['high','medium','low','unknown']),checkedAt:isoTime,conflictWithClaimIds:z.array(id).optional()});

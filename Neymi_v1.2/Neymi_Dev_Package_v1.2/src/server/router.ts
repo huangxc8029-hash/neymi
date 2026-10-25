@@ -3,10 +3,13 @@ import {getConfiguredJobStore} from './store';
 import {ApiError,invalidRequest,notFound} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
+import {getResearchService} from './research-runtime';
 import {ZodError} from 'zod';
 import {z} from 'zod';
 const jobInputSchema=z.strictObject({kind:z.literal('context'),context:z.unknown()});
 const factsInputSchema=z.strictObject({context:z.unknown()});
+const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()});
+const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
 
 const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers});
 async function readJson(request:Request):Promise<unknown>{
@@ -49,6 +52,22 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=factsInputSchema.parse(await readJson(request));
       await authorizeContext(input.context as never);
       return json({facts:await proposeSelfFacts(input.context as never)});
+    }
+    if(path==='research'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=researchInputSchema.parse(await readJson(request));
+      return json(await getResearchService().start(owner,input.input as never,input.context as never),202);
+    }
+    if(path.startsWith('research/')){
+      const owner=readSession(request);if(!owner)throw notFound();
+      const id=segments[1],service=getResearchService();
+      if(request.method==='GET'&&segments.length===2)return json({research:await service.result(owner,id)});
+      if(request.method==='DELETE'&&segments.length===2){if(!originOk(request))throw invalidRequest('Invalid origin');await service.cancel(owner,id);return json({ok:true});}
+      if(request.method==='POST'&&segments.length===3&&segments[2]==='confirm'){
+        if(!originOk(request))throw invalidRequest('Invalid origin');
+        const input=confirmIdentitySchema.parse(await readJson(request));await service.confirmIdentity(owner,id,input.candidateId);return json({ok:true});
+      }
     }
     if(!path.startsWith('jobs'))throw notFound();
     if(!originOk(request)&&request.method!=='GET')throw invalidRequest('Invalid origin');
