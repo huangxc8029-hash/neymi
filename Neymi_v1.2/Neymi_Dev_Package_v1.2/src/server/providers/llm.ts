@@ -3,7 +3,7 @@ import type {ApprovedCloudContext,CandidateSelfFact,ConnectionStrategy,CardRecip
 export type PlanningInput={context:InteractionContext;research:RecipientResearch;approvedContext:ApprovedCloudContext};
 export interface LLMProvider{
   proposeFacts(context:ApprovedCloudContext):Promise<unknown>;
-  plan(input:PlanningInput):Promise<unknown>;
+  plan(input:PlanningInput,signal?:AbortSignal):Promise<unknown>;
 }
 export class UnconfiguredLLMProvider implements LLMProvider{
   async proposeFacts():Promise<CandidateSelfFact[]>{throw unavailable('AI provider is not configured');}

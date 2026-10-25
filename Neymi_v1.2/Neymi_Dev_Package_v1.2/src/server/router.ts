@@ -1,11 +1,14 @@
 import {readSession,createSession,sessionCookie} from './session';
 import {getConfiguredJobStore} from './store';
-import {ApiError,invalidRequest,notFound} from './errors';
+import {ApiError,invalidRequest,notFound,rateLimited} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
 import {getResearchService} from './research-runtime';
 import {planStrategy} from '../modules/strategy/plan';
 import {getPublicationService} from './publication-runtime';
+import {fetchPublic} from './fetch-public';
+import {validateActivityText} from '../modules/activity/service';
+import {planActivity} from '../modules/activity/planning';
 import {runScheduledCleanup} from './cleanup';
 import {timingSafeEqual} from 'node:crypto';
 import {ZodError} from 'zod';
@@ -16,6 +19,15 @@ const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()}
 const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
 const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),approvedContext:z.unknown()});
 const publicationInputSchema=z.strictObject({projection:z.unknown(),confirmation:z.unknown()});
+const activitySourceInputSchema=z.strictObject({url:z.string().url().max(2048)});
+const activityPlanInputSchema=z.strictObject({eventId:z.string().min(1).max(128),context:z.unknown(),approvedContext:z.unknown(),researches:z.array(z.unknown()).min(1).max(20)});
+const activityPlanUsage=new Map<string,Array<{at:number;count:number}>>();
+function consumeActivityPlanBudget(owner:string,count:number){
+  const now=Date.now();for(const [key,entries]of activityPlanUsage){const current=entries.filter(entry=>entry.at>now-60*60*1000);if(current.length)activityPlanUsage.set(key,current);else activityPlanUsage.delete(key);}
+  const recent=(activityPlanUsage.get(owner)??[]).filter(entry=>entry.at>now-60*60*1000);
+  if(recent.reduce((sum,entry)=>sum+entry.count,0)+count>20){activityPlanUsage.set(owner,recent);throw rateLimited(Math.max(1,Math.ceil((recent[0].at+60*60*1000-now)/1000)));}
+  recent.push({at:now,count});activityPlanUsage.set(owner,recent);
+}
 
 const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...(headers as Record<string,string>|undefined)}});
 async function readJson(request:Request,maxBytes=128*1024):Promise<unknown>{
@@ -33,7 +45,12 @@ async function readJson(request:Request,maxBytes=128*1024):Promise<unknown>{
   return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
 }
 function originOk(request:Request):boolean{
-  const origin=request.headers.get('origin');return Boolean(origin)&&origin===new URL(request.url).origin;
+  const url=new URL(request.url),host=request.headers.get('host')??request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  let target=url.origin;try{if(host){const protocol=request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()??url.protocol.slice(0,-1);target=new URL(`${protocol}://${host}`).origin;}}catch{return false;}
+  const origin=request.headers.get('origin');
+  if(origin)return origin===target;
+  const referer=request.headers.get('referer'),site=request.headers.get('sec-fetch-site');if(site&&site!=='same-origin'||!referer)return false;
+  try{return new URL(referer).origin===target;}catch{return false;}
 }
 function failure(error:unknown):Response{
   const issue=error instanceof ApiError?error:error instanceof SyntaxError||error instanceof ZodError?invalidRequest():null;
@@ -65,6 +82,22 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=planInputSchema.parse(await readJson(request));
       await authorizeContext(input.approvedContext as never);
       return json(await planStrategy(input as never));
+    }
+    if(path==='activity/source'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const input=activitySourceInputSchema.parse(await readJson(request));
+      const source=await fetchPublic(input.url);
+      let text:string;try{text=validateActivityText(source.text);}catch{throw invalidRequest('Activity source contains unsafe or unusable text');}
+      return json({text,url:source.url,title:new URL(source.url).hostname,accessedAt:new Date().toISOString()});
+    }
+    if(path==='activity/plans'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=activityPlanInputSchema.parse(await readJson(request));
+      await authorizeContext(input.approvedContext as never);
+      consumeActivityPlanBudget(owner,input.researches.length);
+      let results;try{results=await planActivity(input as never,{signal:request.signal});}catch{throw invalidRequest('Activity plans require confirmed recipients in one event');}
+      return json({results},200);
     }
     if(path==='publications'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');

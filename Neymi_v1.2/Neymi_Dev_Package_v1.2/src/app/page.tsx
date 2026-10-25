@@ -46,6 +46,6 @@ export default function Home(){
       </div>
     </div>
     <p style={{textAlign:'center',marginTop:32}}><Link href="/prepare">为不同接收人准备更有表现力的 AI 名片</Link></p>
-    <footer>免注册的基础体验 · 本地优先 · 分享由你决定 · <Link href="/cards">我的准备卡</Link> · <Link href="/receive">收到的名片</Link></footer>
+    <footer>免注册的基础体验 · 本地优先 · 分享由你决定 · <Link href="/activity">活动准备</Link> · <Link href="/cards">我的准备卡</Link> · <Link href="/receive">收到的名片</Link></footer>
   </main>;
 }

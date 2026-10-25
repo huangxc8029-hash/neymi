@@ -48,12 +48,12 @@ function ruleBasedPlan(input:PlanningInput,reason:string):Plan{
     uncertainties:[...assessment.openQuestions,reason,'公开来源内容尚未独立核验。'],confidence:'low',createdAt:now};
   const recipe:CardRecipe={schemaVersion:1,id:`recipe_${id}`,kind:'ai',label:'本次交流提案',templateId:'plain',layout:'editorial',animation:'float',
     orderedModules:source.approvedContext.moduleMetadata.map(module=>({localModuleId:module.id,kind:module.kind,emphasis:'normal'})),createdAt:now,updatedAt:now,
-    strategyId:strategy.id,goalId:strategy.goalId,contextId:strategy.contextId,recipientId:strategy.recipientId,
+    strategyId:strategy.id,goalId:strategy.goalId,contextId:strategy.contextId,recipientId:strategy.recipientId,...(source.context.eventId?{eventId:source.context.eventId}:{}),
     headlineDraft:'为这次交流准备的介绍',introDraft:'内容由你确认后再分享。',missingProofPointIds:[],status:'proposed'};
   return validatePlan({strategy,recipe},input);
 }
-export async function planStrategy(input:PlanningInput,provider:LLMProvider=getLLMProvider()):Promise<Plan>{
+export async function planStrategy(input:PlanningInput,provider:LLMProvider=getLLMProvider(),signal?:AbortSignal):Promise<Plan>{
   validateInput(input);
-  try{return validatePlan(await provider.plan(input),input);}
+  try{return validatePlan(await provider.plan(input,signal),input);}
   catch(error){if(error instanceof ApiError&&error.status===503)return ruleBasedPlan(input,'AI 服务未配置；当前是规则草案。');throw error;}
 }

@@ -11,8 +11,8 @@ import {PreparedStore} from '../prepared/store';
 import {cachePreparedCard} from '../sharing/native';
 
 type Plan={strategy:{recommendation:string;confidence:string;recommendedFocus:string;whyTheyMayCare:string;mainPoint:string;openingLine:string;uncertainties:string[]};recipe:CardRecipe};
-export function StrategyPanel({research,context,facts,profile,deviceId,vault}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault}){
-  const [selectedFacts,setSelectedFacts]=useState<string[]>([]),[cloudApproved,setCloudApproved]=useState(false),[result,setResult]=useState<Plan|null>(null),[resultRevision,setResultRevision]=useState<number|null>(null);
+export function StrategyPanel({research,context,facts,profile,deviceId,vault,initialPlan}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault;initialPlan?:Plan}){
+  const [selectedFacts,setSelectedFacts]=useState<string[]>([]),[cloudApproved,setCloudApproved]=useState(false),[result,setResult]=useState<Plan|null>(()=>initialPlan??null),[resultRevision,setResultRevision]=useState<number|null>(()=>initialPlan?profile.revision:null);
   const [selectedIdentity,setSelectedIdentity]=useState<Array<'name'|'company'|'role'>>([]),[selectedFields,setSelectedFields]=useState<string[]>([]);
   const [localApproved,setLocalApproved]=useState(false),[privateLabel,setPrivateLabel]=useState(research.recipient.displayName);
   const [draft,setDraft]=useState<LocalDraft|null>(null),[status,setStatus]=useState(''),[busy,setBusy]=useState(false);

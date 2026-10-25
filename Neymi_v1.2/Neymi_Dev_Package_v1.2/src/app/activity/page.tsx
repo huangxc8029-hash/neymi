@@ -1,0 +1,138 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import Link from 'next/link';
+import type {CardRecipe,ConfirmedSelfFact,ConnectionStrategy,InteractionContext,LocalProfile,RecipientResearch} from '../../domain/types';
+import {IndexedDbVaultStorage} from '../../modules/vault/storage';
+import {createVault} from '../../modules/vault/vault';
+import {buildCloudContext,cloudContextText,createContextApproval,detectSensitiveText,LocalFactsStore} from '../../modules/self/facts';
+import {extractActivityPdf,prepareEvent,runActivityBatch,stageAndTopicGroups,validateActivityText,type ActivityCandidate,type ActivityOutcome,type ActivityPreparation} from '../../modules/activity/service';
+import {StrategyPanel} from '../../modules/strategy/panel';
+
+const key='neymi:activity-preparation:v1';
+const emptyProfile:LocalProfile={schemaVersion:1,id:'guest_profile',revision:1,identity:{},modules:[],facts:[],assets:[]};
+type SavedPlan={strategy:ConnectionStrategy;recipe:CardRecipe};
+type Stored=ActivityPreparation&{drafts:Record<string,string>;followUps:Record<string,string>;aiPlans:Record<string,SavedPlan>;planErrors:Record<string,string>;planFingerprints:Record<string,string>;batchFingerprint:string;aiContext:string;selectedFactIds:string[]};
+const empty:Stored={schemaVersion:1,id:'',name:'',goal:'',source:{kind:'text',title:'',excerpt:'',accessedAt:''},candidates:[],drafts:{},followUps:{},aiPlans:{},planErrors:{},planFingerprints:{},batchFingerprint:'',aiContext:'',selectedFactIds:[]};
+
+export default function ActivityPage(){
+  const [vault]=useState(()=>createVault(new IndexedDbVaultStorage())),[factsStore]=useState(()=>new LocalFactsStore(vault));
+  const [facts,setFacts]=useState<ConfirmedSelfFact[]>([]),[profile,setProfile]=useState<LocalProfile>(emptyProfile),[selectedFactIds,setSelectedFactIds]=useState<string[]>([]),[activity,setActivity]=useState<Stored>(empty),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preparing,setPreparing]=useState(false),[aiBusy,setAiBusy]=useState(false),[cloudApproved,setCloudApproved]=useState(false),[aiContext,setAiContext]=useState(''),[sourceText,setSourceText]=useState(''),[url,setUrl]=useState(''),[openPanels,setOpenPanels]=useState<Set<string>>(new Set());
+  const batchController=useRef<AbortController|null>(null);
+  const [name,setName]=useState(''),[organization,setOrganization]=useState(''),[role,setRole]=useState(''),[description,setDescription]=useState(''),[stageFit,setStageFit]=useState<ActivityCandidate['stageFit']>('unknown');
+  useEffect(()=>{void factsStore.list().then(setFacts).catch(()=>{});void vault.loadPublicProfile().then(setProfile).catch(()=>{});try{const saved=localStorage.getItem(key);if(saved){const parsed={...empty,...JSON.parse(saved) as Partial<Stored>};window.setTimeout(()=>{setActivity(parsed);setSourceText(parsed.source.excerpt);setAiContext(parsed.aiContext);setSelectedFactIds(parsed.selectedFactIds);},0);}}catch{window.setTimeout(()=>setStatus('无法读取上次的本地活动准备。'),0);}},[factsStore,vault]);
+  function save(value:Stored){setActivity(value);try{localStorage.setItem(key,JSON.stringify(value));}catch{setStatus('浏览器空间不足；当前内容还在本页，请导出或减少资料后重试。');}}
+  async function loadUrl(){setBusy(true);setStatus('正在安全读取公开活动网页…');try{const response=await fetch('/v1/activity/source',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})});const result=await response.json();if(!response.ok)throw new Error(result.error?.message??'网页读取失败。');setSourceText(result.text);save({...activity,source:{kind:'public_url',title:result.title,url:result.url,excerpt:result.text,accessedAt:result.accessedAt},drafts:{}});setStatus('网页文字已读取并保存在本地；服务端不保存抓取结果。');}catch(error){setStatus(error instanceof Error?error.message:'网页读取失败。');}finally{setBusy(false);}}
+  async function loadPdf(file:File|undefined){if(!file)return;setBusy(true);setStatus('PDF 在此浏览器内提取文字…');try{if(file.size>10*1024*1024)throw new Error('PDF 最大 10 MiB。');const text=await extractActivityPdf(new Uint8Array(await file.arrayBuffer()));setSourceText(text);save({...activity,source:{kind:'pdf',title:file.name,excerpt:text,accessedAt:new Date().toISOString()},drafts:{}});setStatus('PDF 文字已在本地提取；原文件不会上传。');}catch(error){setStatus(error instanceof Error?error.message:'PDF 无法读取。');}finally{setBusy(false);}}
+  function addCandidate(){try{const value:ActivityCandidate={id:`candidate_${crypto.randomUUID().replaceAll('-','')}`,displayName:name.trim(),...(organization.trim()?{organization:organization.trim()}:{}),...(role.trim()?{role:role.trim()}:{}),description:validateActivityText(description),stageFit,identityConfirmed:false};
+    const candidates=[...activity.candidates,value];if(candidates.length>20)throw new Error('每场活动最多准备 20 位。');
+    save({...activity,candidates,drafts:{...activity.drafts,[value.id]:''}});setCloudApproved(false);setName('');setOrganization('');setRole('');setDescription('');setStatus('嘉宾已加入，逐人确认身份后才可开始准备。');
+  }catch(error){setStatus(error instanceof Error?error.message:'无法加入嘉宾。');}}
+  function updateCandidate(id:string,patch:Partial<ActivityCandidate>){setCloudApproved(false);save({...activity,candidates:activity.candidates.map(candidate=>candidate.id===id?{...candidate,...patch}:candidate),drafts:{},batchFingerprint:''});}
+  function createEvent(){try{const sourceTextClean=validateActivityText(sourceText),source={...activity.source,kind:activity.source.kind,title:activity.source.title||activity.name.trim()||'活动资料',excerpt:sourceTextClean,accessedAt:new Date().toISOString()};
+    const prepared=prepareEvent({schemaVersion:1,id:activity.id||`event_${crypto.randomUUID().replaceAll('-','')}`,name:activity.name.trim(),goal:activity.goal,source,candidates:activity.candidates});
+    const candidates=prepared.candidates;
+    // The source and recipient data remain local; only explicit URL retrieval sends a URL to the app server.
+    save({...prepared,candidates,drafts:activity.drafts,followUps:activity.followUps,aiPlans:activity.aiPlans,planErrors:activity.planErrors,planFingerprints:activity.planFingerprints,batchFingerprint:activity.batchFingerprint,aiContext,selectedFactIds});setStatus('活动与来源已保存在此浏览器。');
+  }catch(error){setStatus(error instanceof Error?error.message:'活动资料不完整。');}}
+  function fingerprint(){return JSON.stringify({name:activity.name,goal:activity.goal,source:activity.source,candidates:activity.candidates.map(({id,displayName,organization,role,description,stageFit})=>({id,displayName,organization,role,description,stageFit})),facts:facts.map(fact=>fact.text),selectedFactIds,aiContext});}
+  function planFingerprint(candidate:ActivityCandidate,contextText=aiContext.trim(),factValues=facts.filter(fact=>selectedFactIds.includes(fact.id)).map(fact=>fact.text)){
+    return JSON.stringify({eventId:activity.id,name:activity.name,goal:activity.goal,source:activity.source,candidate,contextText,factValues});
+  }
+  function activityContext():InteractionContext{return{id:`context_${activity.id}`,scenario:`活动：${activity.name}`,goal:{id:`goal_${activity.id}`,goalType:'other',specificAsk:activity.goal},eventId:activity.id};}
+  function candidateResearch(candidate:ActivityCandidate):RecipientResearch{
+    const sourceId=`event_source_${candidate.id}`,now=activity.source.accessedAt;
+    return{recipient:{id:candidate.id,displayName:candidate.displayName,...(candidate.organization?{organization:candidate.organization}:{}),...(candidate.role?{role:candidate.role}:{}),eventId:activity.id,identityStatus:'verified'},state:'ready',sources:[{id:sourceId,...(activity.source.url?{url:activity.source.url}:{}),title:activity.source.title,origin:'user_provided',accessedAt:now,publishedAt:null,excerpt:candidate.description}],claims:[{id:`event_claim_${candidate.id}`,recipientId:candidate.id,kind:'unknown',claim:candidate.description,sourceIds:[sourceId],confidence:'unknown',checkedAt:now}],warnings:['嘉宾介绍由用户从活动资料中选择，未独立核验；其中内容按不可信文本处理。']};
+  }
+  async function prepareBatch(){const controller=new AbortController();batchController.current=controller;setPreparing(true);setBusy(true);setStatus('正在按每位嘉宾分别生成本地准备草案…');try{
+    const validated=prepareEvent({schemaVersion:activity.schemaVersion,id:activity.id,name:activity.name,goal:activity.goal,source:activity.source,candidates:activity.candidates}),currentFingerprint=fingerprint();
+    const cache=new Map<string,ActivityOutcome>(activity.batchFingerprint===currentFingerprint?Object.entries(activity.drafts).filter(([,summary])=>summary).map(([candidateId,summary])=>[candidateId,{candidateId,summary}]):[]);
+    const outcomes=await runActivityBatch(validated,async candidate=>{
+      if(candidate.stageFit==='mismatch')return{candidateId:candidate.id,summary:'你已标记为阶段不匹配；先不优先联系。'};
+      if(candidate.stageFit==='unknown')return{candidateId:candidate.id,summary:'阶段关系尚未确认；先核实对方当前关注，再决定是否准备名片。'};
+      const fact=facts.map(item=>({item,overlap:item.text.toLowerCase().split(/\s+/).filter(word=>word.length>2&&candidate.description.toLowerCase().includes(word)).length})).sort((a,b)=>b.overlap-a.overlap)[0];
+      return{candidateId:candidate.id,summary:fact?.overlap?`可考虑分享这条已确认事实：「${fact.item.text}」。先核实它是否与对方当前关注相关。`:'当前本地资料里没有找到明确主题重合；可以先询问对方的关注点。'};
+    },{cache,signal:controller.signal});
+    const drafts={...activity.drafts};for(const outcome of outcomes)if(outcome.result)drafts[outcome.candidateId]=outcome.result.summary;
+    save({...activity,drafts,batchFingerprint:currentFingerprint});setStatus(controller.signal.aborted?'批量准备已取消。':`完成 ${outcomes.filter(item=>item.state==='ready'||item.state==='reused').length} 位；失败 ${outcomes.filter(item=>item.state==='failed').length} 位。结果仅在本地，不代表 AI 研究或成功概率。`);
+  }catch(error){setStatus(error instanceof Error?error.message:'批量准备失败。');}finally{batchController.current=null;setPreparing(false);setBusy(false);}}
+  async function createAiPlans(onlyCandidateId?:string){
+    setAiBusy(true);setStatus('正在为每位可准备嘉宾单独生成方案…');
+    const controller=new AbortController();batchController.current=controller;
+    try{
+      const selected=facts.filter(fact=>selectedFactIds.includes(fact.id)),contextId=`context_${activity.id}`,now=new Date().toISOString(),approval=await createContextApproval(aiContext,contextId,`为活动 ${activity.name} 准备多人交流方案`,now,selected),approvedContext=await buildCloudContext(aiContext,selected,approval);
+      const currentFingerprint=fingerprint(),eligible=activity.candidates.filter(candidate=>candidate.stageFit!=='mismatch'&&(!onlyCandidateId||candidate.id===onlyCandidateId)),selectedValues=selected.map(fact=>fact.text);
+      const validPlan=(candidate:ActivityCandidate)=>activity.planFingerprints[candidate.id]===planFingerprint(candidate,approvedContext.text,selectedValues);
+      const pending=eligible.filter(candidate=>!activity.aiPlans[candidate.id]||!validPlan(candidate));
+      const aiPlans={...activity.aiPlans},planErrors={...activity.planErrors},planFingerprints={...activity.planFingerprints};
+      if(pending.length){
+        const context=activityContext(),researches:RecipientResearch[]=pending.map(candidateResearch);
+        const bodyToSend=JSON.stringify({eventId:activity.id,context,approvedContext,researches});
+        if(detectSensitiveText(`${approvedContext.text}\n${bodyToSend}`).length)throw new Error('发送内容检测到联系方式或地址，请移除后再试。');
+        const session=await fetch('/v1/session',{method:'POST'});if(!session.ok){const error=await session.json().catch(()=>null);throw new Error(error?.error?.message??'匿名会话创建失败。');}
+        const response=await fetch('/v1/activity/plans',{method:'POST',headers:{'content-type':'application/json'},body:bodyToSend,signal:controller.signal});
+        const result=await response.json();if(!response.ok)throw new Error(result.error?.message??'多人方案生成失败。');
+        for(const item of result.results as Array<{candidateId:string;state:string;strategy?:ConnectionStrategy;recipe?:CardRecipe;error?:string}>){const candidate=pending.find(value=>value.id===item.candidateId);if(candidate&&item.strategy&&item.recipe){aiPlans[item.candidateId]={strategy:item.strategy,recipe:item.recipe};planFingerprints[item.candidateId]=planFingerprint(candidate,approvedContext.text,selectedValues);delete planErrors[item.candidateId];}else if(candidate&&item.state==='failed')planErrors[item.candidateId]=item.error??'此人方案生成失败，可单独重试。';}
+        const failed=(result.results as Array<{state:string}>).filter(item=>item.state==='failed').length;
+        const prepared=eligible.filter(candidate=>planFingerprints[candidate.id]===planFingerprint(candidate,approvedContext.text,selectedValues)).length;
+        save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setCloudApproved(false);setStatus(`已准备 ${prepared} 位方案；失败 ${failed} 位。结果只保存在此浏览器。`);
+      }else{save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setStatus(eligible.length?'已复用本地方案；未再次发送云端请求。':'所有嘉宾都标记为阶段不匹配；没有发送云端请求。');}
+    }catch(error){setStatus(controller.signal.aborted?'批量 AI 方案已取消。':error instanceof Error?error.message:'多人方案生成失败。');}finally{batchController.current=null;setAiBusy(false);}
+  }
+  const groups=stageAndTopicGroups(activity.candidates,facts.map(fact=>fact.text));
+  const allConfirmed=activity.candidates.length>0&&activity.candidates.every(candidate=>candidate.identityConfirmed);
+  const candidateFormDisabled=activity.candidates.length>=20||!name.trim()||!description.trim();
+  function candidateRow(candidate:ActivityCandidate){const plan=activity.aiPlans[candidate.id],selected=facts.filter(fact=>selectedFactIds.includes(fact.id)),planIsCurrent=Boolean(plan&&activity.planFingerprints[candidate.id]===planFingerprint(candidate,cloudContextText(aiContext,selected),selected.map(fact=>fact.text)));
+    return <article key={candidate.id} style={{border:'1px solid #d9ddd6',borderRadius:12,padding:16,marginTop:12}}>
+    <label><input type="checkbox" disabled={busy||aiBusy} checked={candidate.identityConfirmed} onChange={event=>updateCandidate(candidate.id,{identityConfirmed:event.target.checked})}/> 我确认这是我要联系的嘉宾</label>
+    <h3>{candidate.displayName}{candidate.role?` · ${candidate.role}`:''}</h3><p>{candidate.organization}</p><p>{candidate.description}</p>
+    <label>阶段判断 <select disabled={busy||aiBusy} value={candidate.stageFit} onChange={event=>updateCandidate(candidate.id,{stageFit:event.target.value as ActivityCandidate['stageFit']})}><option value="unknown">未知</option><option value="aligned">可能符合</option><option value="mismatch">阶段不匹配</option></select></label>
+    {activity.drafts[candidate.id]&&<p role="status">{activity.drafts[candidate.id]}</p>}
+    <label htmlFor={`followup-${candidate.id}`}>自愿记录后续跟进（仅保存在本地）</label><textarea id={`followup-${candidate.id}`} disabled={busy||aiBusy} value={activity.followUps[candidate.id]??''} maxLength={1000} rows={2} onChange={event=>save({...activity,followUps:{...activity.followUps,[candidate.id]:event.target.value}})} style={{width:'100%'}}/>
+    <button type="button" disabled={busy||aiBusy} onClick={()=>save({...activity,followUps:{...activity.followUps,[candidate.id]:activity.followUps[candidate.id]??''}})}>保存跟进笔记</button>
+    <button type="button" disabled={busy||aiBusy} onClick={()=>save({...activity,candidates:activity.candidates.filter(item=>item.id!==candidate.id)})}>移除此人</button>
+    {activity.planErrors[candidate.id]&&!planIsCurrent&&<p role="alert">{activity.planErrors[candidate.id]} {cloudApproved&&candidate.identityConfirmed&&<button type="button" disabled={aiBusy} onClick={()=>void createAiPlans(candidate.id)}>重试此人方案</button>}</p>}
+    {plan&&planIsCurrent&&<section><h4>AI 表达方案</h4><p>{plan.strategy.recommendation==='verify_first'?'先核实双方需求':plan.strategy.recommendation==='no_outreach_recommended'?'不建议当前联系':'建议准备介绍'}</p><p>建议重点：{plan.strategy.recommendedFocus}</p><p>{plan.recipe.headlineDraft}</p><p>{plan.recipe.introDraft}</p><ul>{plan.strategy.uncertainties.map((item,index)=><li key={index}>{item}</li>)}</ul>
+      <button type="button" onClick={()=>setOpenPanels(current=>{const next=new Set(current);if(next.has(candidate.id))next.delete(candidate.id);else next.add(candidate.id);return next;})}>{openPanels.has(candidate.id)?'收起本地合成审阅':'审阅并本地合成名片'}</button>
+      {openPanels.has(candidate.id)&&<StrategyPanel key={`${candidate.id}-${activity.planFingerprints[candidate.id]}`} research={candidateResearch(candidate)} context={activityContext()} facts={facts} profile={profile} deviceId="device_local" vault={vault} initialPlan={plan}/>}</section>}
+  </article>;}
+  const selectedFacts=facts.filter(fact=>selectedFactIds.includes(fact.id)),eligibleForAi=activity.candidates.filter(candidate=>candidate.stageFit!=='mismatch');
+  const cloudPreview=JSON.stringify({purpose:'为本活动逐位拟定表达方案',event:{name:activity.name,goal:activity.goal},selectedSelfText:aiContext.trim(),selectedConfirmedFacts:selectedFacts.map(fact=>fact.text),recipients:eligibleForAi.map(({displayName,organization,role,description})=>({displayName,organization,role,description}))},null,2);
+  const cloudSensitive=detectSensitiveText(cloudPreview);
+  return <main className="workspace"><header><Link className="wordmark" href="/">neymi</Link></header>
+    <div className="hero"><p className="eyebrow">活动准备 · 最多 20 人</p><h1>把活动资料变成一份本地准备清单。</h1><p className="intro">先提供活动资料和嘉宾介绍，再逐人确认身份。系统只提示主题重合；它不预测对方心理或联系成功率。</p></div>
+    <section className="studio" style={{display:'block',maxWidth:820,margin:'0 auto'}}>
+      <label htmlFor="event-name">活动名称</label><input id="event-name" disabled={busy||aiBusy} value={activity.name} onChange={event=>{setCloudApproved(false);save({...activity,name:event.target.value,drafts:{},batchFingerprint:''});}} maxLength={160} style={{width:'100%'}}/>
+      <label htmlFor="event-goal" style={{display:'block',marginTop:12}}>这次活动想建立什么联系</label><input id="event-goal" disabled={busy||aiBusy} value={activity.goal} onChange={event=>{setCloudApproved(false);save({...activity,goal:event.target.value,drafts:{},batchFingerprint:''});}} maxLength={500} style={{width:'100%'}}/>
+      <h2>活动资料</h2><p>公开网页通过 SSRF 安全抓取且不保存；PDF 在浏览器本地解析；粘贴内容及来源保存在本地浏览器。</p>
+      <label htmlFor="activity-url">公开活动网址（HTTPS）</label><input id="activity-url" disabled={busy||aiBusy} type="url" value={url} onChange={event=>setUrl(event.target.value)} style={{width:'100%'}}/><button type="button" disabled={!/^https:\/\//i.test(url)||busy||aiBusy} onClick={()=>void loadUrl()}>安全读取网页</button>
+      <label htmlFor="activity-pdf" style={{display:'block',marginTop:16}}>或选择 PDF（最多 10 MiB、60 页；扫描图片 PDF 暂不支持）</label><input id="activity-pdf" type="file" accept="application/pdf,.pdf" disabled={busy||aiBusy} onChange={event=>{void loadPdf(event.target.files?.[0]);}}/>
+      <label htmlFor="activity-source" style={{display:'block',marginTop:16}}>活动议程、嘉宾介绍或公开来源文字</label><textarea id="activity-source" disabled={busy||aiBusy} value={sourceText} onChange={event=>setSourceText(event.target.value)} maxLength={20000} rows={8} style={{width:'100%'}} />
+      <button type="button" disabled={busy||aiBusy} onClick={()=>{setCloudApproved(false);save({...activity,source:{kind:'text',title:'用户粘贴的活动资料',excerpt:sourceText,accessedAt:new Date().toISOString()},drafts:{},batchFingerprint:''});}}>保存活动资料到本地</button>
+      <h2>添加嘉宾（{activity.candidates.length}/20）</h2><p>姓名与嘉宾介绍由你从活动资料中挑选。身份确认前不会进入批量准备。</p>
+      <label htmlFor="candidate-name">姓名</label><input id="candidate-name" disabled={busy||aiBusy} value={name} onChange={event=>setName(event.target.value)} maxLength={120} style={{width:'100%'}}/>
+      <label htmlFor="candidate-org" style={{display:'block',marginTop:10}}>机构</label><input id="candidate-org" disabled={busy||aiBusy} value={organization} onChange={event=>setOrganization(event.target.value)} maxLength={160} style={{width:'100%'}}/>
+      <label htmlFor="candidate-role" style={{display:'block',marginTop:10}}>职位/阶段</label><input id="candidate-role" disabled={busy||aiBusy} value={role} onChange={event=>setRole(event.target.value)} maxLength={160} style={{width:'100%'}}/>
+      <label htmlFor="candidate-description" style={{display:'block',marginTop:10}}>嘉宾介绍</label><textarea id="candidate-description" disabled={busy||aiBusy} value={description} onChange={event=>setDescription(event.target.value)} maxLength={3000} rows={3} style={{width:'100%'}}/>
+      <label>与你目标的阶段关系 <select disabled={busy||aiBusy} value={stageFit} onChange={event=>setStageFit(event.target.value as ActivityCandidate['stageFit'])}><option value="unknown">未知</option><option value="aligned">可能符合</option><option value="mismatch">阶段不匹配</option></select></label>
+      <button type="button" disabled={candidateFormDisabled||busy||aiBusy} onClick={addCandidate}>加入嘉宾</button>
+      <button type="button" disabled={busy||aiBusy||!activity.name.trim()||!activity.goal.trim()||!sourceText.trim()} onClick={createEvent}>检查资料并保存活动</button>
+      {activity.candidates.map(candidateRow)}
+      {activity.candidates.length>0&&<><h2>本地主题整理</h2><p>基于你确认保存在本机的本人事实与嘉宾介绍文字重合程度；来源未独立核验，不表示适配或成功概率。</p>
+        <h3>主题重合</h3>{groups.topicOverlap.map(item=><p key={item.candidate.id}>{item.candidate.displayName} · {item.overlap} 个文字线索</p>)}
+        <h3>阶段不匹配（你标记）</h3>{groups.excluded.map(item=><p key={item.id}>{item.displayName}</p>)}
+        <h3>信息不足/未知</h3>{groups.unknown.map(item=><p key={item.id}>{item.displayName}</p>)}
+        <h3>暂无明显主题重合</h3>{groups.noTopicOverlap.map(item=><p key={item.candidate.id}>{item.candidate.displayName}</p>)}
+        <button type="button" disabled={busy||aiBusy||!allConfirmed||!activity.name.trim()||!activity.goal.trim()||!activity.source.excerpt.trim()} onClick={()=>void prepareBatch()}>{preparing?'逐人准备中…':'逐人准备本地草案'}</button>{preparing&&<button type="button" onClick={()=>batchController.current?.abort()}>取消批量准备</button>}
+        <h2>逐人生成 AI 表达方案</h2><p>这次请求只发送你选中的本人事实、文本框内容，以及下方列出的已确认嘉宾介绍。云端方案按人隔离，结果保存在本地。匿名会话最多提交 20 位/小时；取消会阻止后续嘉宾开始处理。</p>
+        <label htmlFor="event-ai-context">选择要提供给 AI 的本人背景（可留空但至少选择一条已确认事实）</label><textarea id="event-ai-context" disabled={busy||aiBusy} value={aiContext} maxLength={20000} rows={4} onChange={event=>{setAiContext(event.target.value);setCloudApproved(false);save({...activity,aiContext:event.target.value,planErrors:{}});}} style={{width:'100%'}}/>
+        {facts.map(fact=><label key={fact.id} style={{display:'block',margin:'8px 0'}}><input type="checkbox" disabled={busy||aiBusy} checked={selectedFactIds.includes(fact.id)} onChange={event=>{const next=event.target.checked?[...selectedFactIds,fact.id]:selectedFactIds.filter(id=>id!==fact.id);setSelectedFactIds(next);setCloudApproved(false);save({...activity,selectedFactIds:next,planErrors:{}});}}/>{fact.text}</label>)}
+        <details><summary>查看本次将发送给 AI 的内容</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{cloudPreview}</pre></details>
+        {cloudSensitive.length>0&&<p role="alert">发送内容中检测到联系方式或地址。请先移除；检测并非完整保护。</p>}
+        <label style={{display:'block',margin:'12px 0'}}><input type="checkbox" disabled={aiBusy} checked={cloudApproved} onChange={event=>setCloudApproved(event.target.checked)}/>我已查看上方内容，并同意为本活动将其发送给 AI 逐位拟定方案。</label>
+        <button type="button" disabled={busy||!activity.id||!allConfirmed||!eligibleForAi.length||!activity.name.trim()||!activity.goal.trim()||!activity.source.excerpt.trim()||!cloudApproved||cloudSensitive.length>0||!aiContext.trim()&&!selectedFacts.length} onClick={()=>void createAiPlans()}>{aiBusy?'正在生成多人方案…':'授权并生成多人 AI 方案'}</button>{aiBusy&&<button type="button" onClick={()=>batchController.current?.abort()}>取消 AI 批量方案</button>}
+      </>}
+      {status&&<p role="status">{status}</p>}
+      <p>已确认本人事实：{facts.length} 条。活动与嘉宾资料不会作为持久数据上传；只有明确确认后，本次选中的内容才会用于 AI 方案。名片仍需逐位审阅并授权在本地合成。</p>
+    </section><footer><Link href="/prepare">单人 AI 准备</Link> · <Link href="/cards">我的准备卡</Link> · 活动与跟进笔记保存在当前浏览器</footer>
+  </main>;
+}
