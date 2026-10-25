@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 import {makeProjection} from '../fixtures/domain';
 
 test('received cards stay separate and can prompt a return card without registration',async({page})=>{
-  await page.goto('/');await page.getByLabel('展示名称').fill('My Own Card');await page.getByRole('button',{name:'预览名片'}).click();
+  await page.goto('/');await page.getByLabel('展示名称').fill('My Own Card');await page.getByRole('button',{name:'保存并更新预览'}).click();
   await page.goto('/receive');
   await page.getByLabel('导入 Neymi 名片文件').setInputFiles({name:'received.ncard',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(makeProjection({identity:{name:'Incoming Contact'}})))});
   await expect(page.getByRole('heading',{name:'Incoming Contact'})).toBeVisible();

@@ -9,17 +9,25 @@ import {CardRenderer} from '../card/renderer';
 import {SharePreview} from '../sharing/preview';
 import {PreparedStore} from '../prepared/store';
 import {cachePreparedCard} from '../sharing/native';
+import {UnlockPanel} from '../vault/unlock-panel';
+import {CONTACT_MODULE_ID,contactItems} from '../card/contacts';
+import type {ProfileItem} from '../../domain/types';
+import {useEffect} from 'react';
 
-type Plan={strategy:{recommendation:string;confidence:string;recommendedFocus:string;whyTheyMayCare:string;mainPoint:string;openingLine:string;uncertainties:string[]};recipe:CardRecipe};
+type Plan={mode?:'ai'|'rule';strategy:{recommendation:string;confidence:string;recommendedFocus:string;whyTheyMayCare:string;mainPoint:string;openingLine:string;uncertainties:string[]};recipe:CardRecipe};
 export function StrategyPanel({research,context,facts,profile,deviceId,vault,initialPlan}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault;initialPlan?:Plan}){
   const [selectedFacts,setSelectedFacts]=useState<string[]>([]),[cloudApproved,setCloudApproved]=useState(false),[result,setResult]=useState<Plan|null>(()=>initialPlan??null),[resultRevision,setResultRevision]=useState<number|null>(()=>initialPlan?profile.revision:null);
   const [selectedIdentity,setSelectedIdentity]=useState<Array<'name'|'company'|'role'>>([]),[selectedFields,setSelectedFields]=useState<string[]>([]);
   const [localApproved,setLocalApproved]=useState(false),[privateLabel,setPrivateLabel]=useState(research.recipient.displayName);
   const [draft,setDraft]=useState<LocalDraft|null>(null),[status,setStatus]=useState(''),[busy,setBusy]=useState(false);
+  const [contacts,setContacts]=useState<ProfileItem[]>([]),[vaultInitialized,setVaultInitialized]=useState(false);
+  useEffect(()=>{void vault.isInitialized().then(setVaultInitialized);},[vault]);
+  useEffect(()=>{const timer=setInterval(()=>{if(!vault.isUnlocked())setContacts([]);},15_000);return()=>clearInterval(timer);},[vault]);
   const preview=[`交流场景：${context.scenario}`,`交流目的：${context.goal.specificAsk}`,`接收人：${research.recipient.displayName}`,
     `公开来源摘录：\n${research.sources.map(source=>`${source.title}: ${source.excerpt}`).join('\n')||'暂无'}`].join('\n');
   const outgoingFacts=facts.filter(fact=>selectedFacts.includes(fact.id)),sensitive=detectSensitiveText(`${preview}\n${outgoingFacts.map(fact=>fact.text).join('\n')}`);
-  const fields=profile.modules.flatMap(module=>module.items.filter(item=>item.sensitivity==='ordinary').map(item=>({moduleId:module.id,itemId:item.id,key:`${module.id}/${item.id}`,label:`${module.title} · ${item.label}: ${item.value}`})));
+  const fields=[...profile.modules.flatMap(module=>module.items.filter(item=>item.sensitivity==='ordinary').map(item=>({moduleId:module.id,itemId:item.id,key:`${module.id}/${item.id}`,label:`${module.title} · ${item.label}: ${item.value}`}))),
+    ...contacts.map(item=>({moduleId:CONTACT_MODULE_ID,itemId:item.id,key:`${CONTACT_MODULE_ID}/${item.id}`,label:`联系方式 · ${item.label}: ${item.value}`}))];
   const stale=Boolean(draft&&draft.profileRevision!==profile.revision);
   const strategyStale=resultRevision!==null&&resultRevision!==profile.revision;
   async function generate(){
@@ -30,7 +38,7 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
       const session=await fetch('/v1/session',{method:'POST'});if(!session.ok)throw new Error('无法建立匿名会话。');
       const response=await fetch('/v1/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({context,research,approvedContext})});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'方案暂不可用。');
-      setResult(body as Plan);setResultRevision(profile.revision);setDraft(null);setSelectedIdentity([]);setSelectedFields([]);setLocalApproved(false);setStatus('方案已生成。当前内容是规则草案，仍需你判断和编辑。');
+      setResult(body as Plan);setResultRevision(profile.revision);setDraft(null);setSelectedIdentity([]);setSelectedFields([]);setLocalApproved(false);setStatus(body.mode==='ai'?'AI 方案已生成，请核对事实与来源后再使用。':'方案已生成。当前内容是规则草案，仍需你判断和编辑。');
     }catch(error){setStatus(error instanceof Error?error.message:'方案暂不可用。');}
     finally{setBusy(false);}
   }
@@ -78,6 +86,11 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
       <h4>授权本地读取并合成名片</h4><p>默认 15 分钟，只读取你勾选的字段。敏感资料需先解锁。</p>
       {(['name','company','role'] as const).map(key=>profile.identity[key]&&<label key={key} style={{display:'block'}}><input type="checkbox" checked={selectedIdentity.includes(key)} onChange={event=>setSelectedIdentity(current=>event.target.checked?[...current,key]:current.filter(value=>value!==key))}/>{key==='name'?'姓名':key==='company'?'公司':'职位'}：{profile.identity[key]}</label>)}
       {fields.map(field=><label key={field.key} style={{display:'block'}}><input type="checkbox" checked={selectedFields.includes(field.key)} onChange={event=>setSelectedFields(current=>event.target.checked?[...current,field.key]:current.filter(value=>value!==field.key))}/>{field.label}</label>)}
+      {profile.modules.some(section=>section.id===CONTACT_MODULE_ID)&&<details><summary>选择本地加密的联系方式</summary>
+        <p>联系方式只在此设备解锁和合成，不发送给 AI；分享时仍需单独勾选。</p>
+        {!vault.isUnlocked()?<UnlockPanel vault={vault} initialized={vaultInitialized} onUnlocked={()=>{void vault.readContacts().then(values=>setContacts(contactItems(values))).catch(()=>setStatus('联系方式读取失败。'));}}/>:
+          <button type="button" onClick={()=>{vault.lock();setContacts([]);setSelectedFields(current=>current.filter(key=>!key.startsWith(`${CONTACT_MODULE_ID}/`)));}}>锁定联系方式</button>}
+      </details>}
       <label style={{display:'block',marginTop:12}}>仅本地可见的接收人标签<input value={privateLabel} onChange={event=>setPrivateLabel(event.target.value)} maxLength={120}/></label>
       <label style={{display:'block',margin:'12px 0'}}><input type="checkbox" checked={localApproved} onChange={event=>setLocalApproved(event.target.checked)}/>我同意按所选字段在此设备本地合成。</label>
       {strategyStale&&<p role="alert">本人资料已更改。此方案已过期，请重新生成后再合成。</p>}

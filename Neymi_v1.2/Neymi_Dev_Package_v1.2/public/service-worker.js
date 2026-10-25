@@ -1,4 +1,4 @@
-const CACHE='neymi-shell-v1';
+const CACHE='neymi-shell-v2';
 const SHELL=['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'];
 function cachePolicy(pathname){
   if(/^\/p(?:\/|$)/.test(pathname)||/^\/v1\/publications(?:\/|$)/.test(pathname))return'network-only';
@@ -16,6 +16,13 @@ self.addEventListener('fetch',event=>{
     return;
   }
   if(url.searchParams.has('_rsc')){event.respondWith(fetch(request));return;}
+  if(request.mode==='navigate'){
+    event.respondWith(fetch(request).then(response=>{
+      if(response.ok){const copy=response.clone();void caches.open(CACHE).then(cache=>cache.put(request,copy));}
+      return response;
+    }).catch(async()=>await caches.match(request)||await caches.match('/offline.html')));
+    return;
+  }
   event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
     if(response.ok){const copy=response.clone();void caches.open(CACHE).then(cache=>cache.put(request,copy));}
     return response;

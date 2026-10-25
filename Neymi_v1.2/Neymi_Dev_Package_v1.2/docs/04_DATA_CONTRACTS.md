@@ -114,7 +114,7 @@ interface PublicationReceipt { publication: Publication; revokeToken: string; }
 - openingQuestions 最多 2；未知枚举、跨人/跨任务引用、未知字段、敏感 recipe 值拒绝。
 - confirmedFactIds 必须真实经用户确认；修改生成新 revision。新事实不自动取得云端使用权。
 - LocalProfile 是设备上的逻辑对象；持久化普通/敏感分区，不序列化整对象发云端。LocalDraft 只包含当前 grant 允许的值。
-- 联系字段默认 sensitive，即使用户修改 label 也不能绕过类型；普通文本中的敏感检测只是补充。
+- 邮箱、电话、微信和 WhatsApp 字段默认 sensitive，即使用户修改 label 也不能绕过类型；微信使用 `valueKind: text`，WhatsApp 号码使用 `valueKind: phone`，两者仍为敏感数据。普通文本中的敏感检测只是补充。
 - 投影新建对象，不带 profileId、recipientId、模块内部 ID、私有标签、Strategy、Grant；图片无 EXIF。未选 identity/字段/资源绝不出现。
 - 公开发布与导出用相同投影；ShareConfirmation.digest 必须匹配当前实际字节，内容变更需重新确认。
 - AI 草稿不当作本人事实；公开寄语用户批准且单独进入投影，不把私有标签直接复制过去。

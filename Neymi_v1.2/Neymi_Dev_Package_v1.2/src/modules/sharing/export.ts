@@ -1,6 +1,7 @@
 import {shareProjectionSchema} from '../../domain/schemas';
 import type {ShareProjection} from '../../domain/types';
 import {fromBase64} from '../vault/crypto';
+import {getCardTemplate} from '../card/templates';
 
 const encode=(value:string)=>new TextEncoder().encode(value);
 const vEscape=(value:string)=>value.replaceAll('\\','\\\\').replace(/\r\n|\r|\n/g,'\\n').replaceAll(';','\\;').replaceAll(',','\\,');
@@ -15,7 +16,7 @@ export function serializeVcard(projection:ShareProjection):Uint8Array{
   for(const section of p.modules)for(const item of section.items){
     const label=item.label.toLowerCase();
     const kind=/email|邮箱|邮件/.test(label)?'EMAIL':/phone|tel|电话|手机/.test(label)?'TEL':'NOTE';
-    lines.push(`${kind}:${vEscape(item.value)}`);
+    lines.push(`${kind}:${vEscape(kind==='NOTE'?`${item.label}: ${item.value}`:item.value)}`);
   }
   if(p.publicDedication)lines.push(`NOTE:${vEscape(p.publicDedication)}`);
   return encode(lines.join('\r\n')+'\r\nEND:VCARD\r\n');
@@ -24,13 +25,14 @@ export async function renderImage(projection:ShareProjection):Promise<Blob>{
   const p=shareProjectionSchema.parse(projection);
   const canvas=document.createElement('canvas');canvas.width=1500;canvas.height=900;
   const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas unavailable');
-  const gradient=ctx.createLinearGradient(0,0,1500,900);gradient.addColorStop(0,'#153d31');gradient.addColorStop(1,'#3c6d5b');
+  const template=getCardTemplate(p.templateId),gradient=ctx.createLinearGradient(0,0,1500,900);gradient.addColorStop(0,template.start);gradient.addColorStop(1,template.end);
   ctx.fillStyle=gradient;ctx.fillRect(0,0,1500,900);
-  ctx.fillStyle='#f5f3e7';ctx.font='bold 45px sans-serif';ctx.fillText('neymi ✳',90,115);
-  ctx.font='bold 90px sans-serif';ctx.fillText(p.identity.name??'',90,360,1280);
-  ctx.font='38px sans-serif';ctx.fillText([p.identity.role,p.identity.company].filter(Boolean).join(' · '),90,430,1250);
+  ctx.fillStyle=template.ink;ctx.font='bold 45px sans-serif';ctx.fillText('neymi',90,115);
+  ctx.fillStyle=template.accent;ctx.beginPath();ctx.arc(245,98,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=template.ink;ctx.font='bold 90px sans-serif';ctx.fillText(p.identity.name??'',90,360,1280);
+  ctx.fillStyle=template.muted;ctx.font='38px sans-serif';ctx.fillText([p.identity.role,p.identity.company].filter(Boolean).join(' · '),90,430,1250);
   ctx.font='30px sans-serif';let y=555;
-  for(const section of p.modules)for(const item of section.items){
+  for(const section of [...p.modules].sort((a,b)=>Number(b.kind==='contact')-Number(a.kind==='contact')))for(const item of section.items){
     if(y>800)break;
     ctx.fillText(`${section.title} · ${item.label}: ${item.value}`,90,y,1300);y+=55;
   }

@@ -1,0 +1,41 @@
+{
+  "fixtureOnly": true,
+  "event": {
+    "id": "evt_demo",
+    "name": "Demo Robotics Forum (fictional)",
+    "goal": "Find seed-stage robotics investors and event operators"
+  },
+  "recipients": [
+    {
+      "id": "r_a",
+      "name": "Investor A",
+      "organization": "Example Seed Ventures",
+      "publicMandate": "robotics seed investments",
+      "evidence": [
+        {
+          "id": "src1",
+          "kind": "fictional_public_profile",
+          "url": "https://example.org/demo/a",
+          "claim": "seed-stage robotics",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "id": "r_b",
+      "name": "Investor B",
+      "organization": "Example Growth Capital",
+      "publicMandate": "Series B+ enterprise investments",
+      "evidence": [
+        {
+          "id": "src2",
+          "kind": "fictional_public_profile",
+          "url": "https://example.org/demo/b",
+          "claim": "Series B+ only",
+          "verified": false
+        }
+      ]
+    }
+  ],
+  "warning": "Fictional test data only. Never represent sources as real."
+}

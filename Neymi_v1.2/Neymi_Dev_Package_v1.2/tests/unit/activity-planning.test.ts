@@ -21,10 +21,10 @@ describe('event multi-recipient strategy preparation',()=>{
     expect(results.map(item=>item.recipe?.eventId)).toEqual(['event_demo','event_demo']);
     expect(results.every(item=>item.strategy?.recommendation==='verify_first')).toBe(true);
   });
-  it('isolates one provider failure and sanitizes its outcome',async()=>{
+  it('isolates provider failures without presenting a failed live request as a rule success',async()=>{
     const model=provider(async value=>{if(value.research.recipient.id==='recipient_a')throw new Error('PRIVATE_SENTINEL');throw new ApiError('SERVICE_UNAVAILABLE','offline',503);});
     const results=await planActivity(input(),{provider:model});
-    expect(results.map(item=>item.state)).toEqual(['failed','ready']);
+    expect(results.map(item=>item.state)).toEqual(['failed','failed']);
     expect(results[0].error).toBe('此人方案生成失败，可单独重试。');
     expect(JSON.stringify(results)).not.toContain('PRIVATE_SENTINEL');
   });

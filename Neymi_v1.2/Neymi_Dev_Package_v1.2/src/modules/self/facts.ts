@@ -51,7 +51,7 @@ export class LocalFactsStore{
     const profile=await this.profile(),previous=profile.facts.find(item=>item.id===fact.id);
     const next={...fact,revision:(previous?.revision??0)+1};
     confirmedSelfFactSchema.parse(next);
-    await this.vault.saveProfile({...profile,revision:profile.revision+1,facts:[...profile.facts.filter(item=>item.id!==fact.id),next]});
+    await this.vault.saveOrdinaryProfile({...profile,revision:profile.revision+1,facts:[...profile.facts.filter(item=>item.id!==fact.id),next]});
   }
 }
 export async function proposeSelfFacts(context:ApprovedCloudContext,provider:Pick<ReturnType<typeof getLLMProvider>,'proposeFacts'>=getLLMProvider()):Promise<CandidateSelfFact[]>{

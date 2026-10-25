@@ -16,6 +16,7 @@
 | ADR-010 | Implementation default | 24h 提案、30d 发布、来源/时间/配额限制；真实运行前验证 |
 | ADR-011 | Proposed implementation | TypeScript Web/PWA、同源 API、IndexedDB、服务端存储适配器；A00 锁定依赖 |
 | ADR-012 | Pilot only | 运行环境 Node 24 的内置 SQLite 用于匿名提案任务；该 API 仍标为实验功能，部署需要持久卷与版本锁定，生产规模前替换为稳定驱动 |
+| ADR-013 | Accepted provider choice | AI 使用 DeepSeek Chat Completions API，默认模型 `deepseek-flash`；搜索使用 Tavily。真实调用仍须配置服务端密钥，并完成费用、数据地区及留存核验后才可作试点依据 |
 
 ADR-005–010 详见新增文件。技术栈为计划默认，不伪称用户指定供应商。
 
@@ -43,6 +44,10 @@ ADR-005–010 详见新增文件。技术栈为计划默认，不伪称用户指
 6. AI 付费价格/额度、付费恢复、视觉产品定价另立需求；不阻塞 A。
 
 缺配置时使用接口和显式 fixtures，可继续不依赖它们的工作；真实联调标 BLOCKED。新增范围必须写变更 ID、契约、任务与验收，不静默扩大。
+
+## 提供商决策补充（2026-10-25）
+- 用户选择 DeepSeek 作为 AI 服务、Tavily 作为公开搜索服务。适配器只读 `NEYMI_DEEPSEEK_API_KEY` / `NEYMI_DEEPSEEK_MODEL` 和 `NEYMI_TAVILY_API_KEY`；缺少密钥时明确报告未配置。密钥只放在服务端环境，不放在浏览器或仓库。
+- 单次请求仍只包含用户明确批准的当前文本/上下文，不附带历史对话或本地保险库联系方式。开始真实试点前需核验 DeepSeek 与 Tavily 对应账户的费用、数据地区和保留政策。
 
 ## B 实施补充（2026-10-25）
 - 活动 PDF 使用 Mozilla PDF.js 在浏览器本地提取文本，限制 10 MiB / 60 页 / 20,000 字；不处理扫描件，不执行 PDF 脚本。实现范围不等同 OCR 或安全审计结论。

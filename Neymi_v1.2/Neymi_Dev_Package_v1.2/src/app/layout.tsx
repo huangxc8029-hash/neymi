@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import {ServiceWorkerRegister} from '../modules/pwa/register';
 import './globals.css';
+import '../modules/card/styles.css';
 
 export const metadata: Metadata = {
   title: 'Neymi — 为每次相遇，准备好的你',

@@ -3,6 +3,7 @@ import {getConfiguredJobStore} from './store';
 import {ApiError,invalidRequest,notFound,rateLimited} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
+import {coachSelfIntro,getLLMProvider,UnconfiguredLLMProvider} from './providers/llm';
 import {getResearchService} from './research-runtime';
 import {planStrategy} from '../modules/strategy/plan';
 import {getPublicationService} from './publication-runtime';
@@ -86,12 +87,20 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       await authorizeContext(input.context as never);
       return json({facts:await proposeSelfFacts(input.context as never)});
     }
+    if(path==='coach'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=factsInputSchema.parse(await readJson(request));
+      await authorizeContext(input.context as never);
+      return json(await coachSelfIntro(input.context as never));
+    }
     if(path==='plan'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');
       const owner=readSession(request);if(!owner)throw notFound();
       const input=planInputSchema.parse(await readJson(request));
       await authorizeContext(input.approvedContext as never);
-      return json(await planStrategy(input as never));
+      const provider=getLLMProvider(),plan=await planStrategy(input as never,provider,request.signal);
+      return json({...plan,mode:provider instanceof UnconfiguredLLMProvider?'rule':'ai'});
     }
     if(path==='activity/source'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');

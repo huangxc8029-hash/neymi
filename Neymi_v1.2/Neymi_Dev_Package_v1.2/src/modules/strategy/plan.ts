@@ -3,8 +3,8 @@ import {z} from 'zod';
 import {validateResearch,validateRecipe} from '../../domain/validate';
 import type {CardRecipe,ConnectionStrategy} from '../../domain/types';
 import type {PlanningInput,LLMProvider} from '../../server/providers/llm';
-import {getLLMProvider} from '../../server/providers/llm';
-import {ApiError} from '../../server/errors';
+import {getLLMProvider,UnconfiguredLLMProvider} from '../../server/providers/llm';
+import {unavailable} from '../../server/errors';
 import {detectSensitiveText} from '../self/facts';
 import {assessRecipient,matchedTopics,approvedSelfFacts} from './assess';
 
@@ -54,6 +54,7 @@ function ruleBasedPlan(input:PlanningInput,reason:string):Plan{
 }
 export async function planStrategy(input:PlanningInput,provider:LLMProvider=getLLMProvider(),signal?:AbortSignal):Promise<Plan>{
   validateInput(input);
-  try{return validatePlan(await provider.plan(input,signal),input);}
-  catch(error){if(error instanceof ApiError&&error.status===503)return ruleBasedPlan(input,'AI 服务未配置；当前是规则草案。');throw error;}
+  if(provider instanceof UnconfiguredLLMProvider)return ruleBasedPlan(input,'AI 服务未配置；当前是规则草案。');
+  const output=await provider.plan(input,signal);
+  try{return validatePlan(output,input);}catch{throw unavailable('AI plan failed validation');}
 }

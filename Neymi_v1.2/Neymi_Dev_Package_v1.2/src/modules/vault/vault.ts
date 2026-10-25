@@ -2,6 +2,7 @@ import type {FieldRef,LocalAsset,LocalDraft,LocalProfile,ProfileItem} from '../.
 import {localDraftSchema,localProfileSchema} from '../../domain/schemas';
 import {deriveKey,fromBase64,KDF_ITERATIONS,open,randomBase64,seal,toBase64} from './crypto';
 import type {VaultStorage} from './storage';
+import {CONTACT_MODULE_ID,contactItems,emptyContacts,type ContactValues} from '../card/contacts';
 type Header={version:1;algorithm:'AES-GCM';kdf:'PBKDF2-SHA256';iterations:number;salt:string};
 type Secret={items:Array<{moduleId:string;item:ProfileItem}>;assets:Array<{id:string;mime:LocalAsset['mime'];base64:string}>;preparedDrafts:Array<{id:string;profileRevision:number;payload:string}>};
 const PUBLIC='profile-public',HEADER='vault-header',CIPHER='vault-cipher';
@@ -58,6 +59,39 @@ export class Vault{
     return localProfileSchema.parse(JSON.parse(raw));
   }
   async loadPublicProfile():Promise<LocalProfile>{return this.publicProfile();}
+  async saveOrdinaryProfile(profile:LocalProfile):Promise<void>{
+    localProfileSchema.parse(profile);
+    if(profile.modules.some(section=>section.items.some(item=>item.sensitivity==='sensitive'))||profile.assets.length)
+      throw vaultError('PERMISSION_DENIED','Sensitive data requires the unlocked vault');
+    const existing=await this.storage.get(PUBLIC);
+    const previous=existing?localProfileSchema.parse(JSON.parse(existing)):null;
+    const contactModule=previous?.modules.find(section=>section.id===CONTACT_MODULE_ID);
+    const modules=contactModule&&!profile.modules.some(section=>section.id===CONTACT_MODULE_ID)
+      ?[...profile.modules,contactModule]:profile.modules;
+    await this.storage.set(PUBLIC,JSON.stringify({...profile,modules}));
+  }
+  async readContacts():Promise<ContactValues>{
+    const values=emptyContacts();
+    for(const {item} of (await this.secret()).items.filter(entry=>entry.moduleId===CONTACT_MODULE_ID)){
+      const key=item.id.slice('contact_'.length);
+      if(key in values)values[key as keyof ContactValues]=item.value;
+    }
+    return values;
+  }
+  async saveContacts(values:ContactValues):Promise<LocalProfile>{
+    const items=contactItems(values),secret=await this.secret();
+    let profile:LocalProfile;
+    try{profile=await this.publicProfile();}
+    catch(error){if((error as {code?:string}).code!=='NOT_FOUND')throw error;
+      profile={schemaVersion:1,id:'guest_profile',revision:1,identity:{},modules:[],facts:[],assets:[]};}
+    const modules=profile.modules.filter(section=>section.id!==CONTACT_MODULE_ID);
+    if(items.length)modules.push({id:CONTACT_MODULE_ID,kind:'contact',title:'联系方式',items:[]});
+    const updated=localProfileSchema.parse({...profile,revision:profile.revision+1,modules});
+    secret.items=[...secret.items.filter(entry=>entry.moduleId!==CONTACT_MODULE_ID),...items.map(item=>({moduleId:CONTACT_MODULE_ID,item}))];
+    await this.storage.transaction({[PUBLIC]:JSON.stringify(updated),[CIPHER]:await seal(this.key!,secret)});
+    this.touch();
+    return updated;
+  }
   async readFields(refs:FieldRef[]):Promise<ProfileItem[]>{
     const profile=await this.publicProfile();
     const ordinary=new Map(profile.modules.flatMap(section=>section.items.map(item=>[`${section.id}/${item.id}`,item] as const)));

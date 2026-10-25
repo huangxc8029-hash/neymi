@@ -29,7 +29,7 @@ test('guest prepares, approves, shares, receives, and returns one personalized c
   await page.goto('/');
   await page.getByLabel('展示名称').fill('Lin E2E');await page.getByLabel('公司或团队').fill('Neymi Lab');
   await page.getByRole('button',{name:'添加展示模块'}).click();await page.getByLabel('亮点').fill('做过仓储机器人演示 PRIVATE_UNSELECTED');
-  await page.getByRole('button',{name:'预览名片'}).click();await page.getByRole('link',{name:/AI 名片/}).click();
+  await page.getByRole('button',{name:'保存并更新预览'}).click();await page.getByRole('link',{name:'AI 助手'}).click();
   await page.getByLabel('也可以手动整理一条本人事实（只保存在本地）').fill('做过仓储机器人演示。');
   await page.getByRole('button',{name:'确认并保存事实'}).click();
   await expect(page.getByRole('status')).toContainText('已确认并保存在本地');
