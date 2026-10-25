@@ -4,6 +4,7 @@ import type {FieldRef,LocalDraft,ShareProjection,ShareSelection} from '../../dom
 import {projectShare} from './projection';
 import {assertConfirmation,confirmShare} from './confirmation';
 import {renderImage,serializeNcard,serializeVcard} from './export';
+import {PublicationPanel} from '../publication/panel';
 
 export function SharePreview({draft}:{draft:LocalDraft}){
   const [selection,setSelection]=useState<ShareSelection>({identity:['name'],fields:[],assetIds:[]});
@@ -45,6 +46,7 @@ export function SharePreview({draft}:{draft:LocalDraft}){
       <div className="share-actions"><button type="button" onClick={()=>download('file')}>确认下载名片文件</button>
         <button type="button" onClick={()=>download('vcard')}>确认下载 vCard</button>
         <button type="button" onClick={()=>download('image')}>确认下载图片</button></div>
+      <PublicationPanel key={JSON.stringify(projection)} projection={projection}/>
     </div>}
     {message&&<p role="status">{message}</p>}
   </section>;

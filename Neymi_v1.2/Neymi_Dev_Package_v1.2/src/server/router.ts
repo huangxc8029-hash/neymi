@@ -5,6 +5,9 @@ import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
 import {getResearchService} from './research-runtime';
 import {planStrategy} from '../modules/strategy/plan';
+import {getPublicationService} from './publication-runtime';
+import {runScheduledCleanup} from './cleanup';
+import {timingSafeEqual} from 'node:crypto';
 import {ZodError} from 'zod';
 import {z} from 'zod';
 const jobInputSchema=z.strictObject({kind:z.literal('context'),context:z.unknown()});
@@ -12,16 +15,17 @@ const factsInputSchema=z.strictObject({context:z.unknown()});
 const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()});
 const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
 const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),approvedContext:z.unknown()});
+const publicationInputSchema=z.strictObject({projection:z.unknown(),confirmation:z.unknown()});
 
-const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers});
-async function readJson(request:Request):Promise<unknown>{
+const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...(headers as Record<string,string>|undefined)}});
+async function readJson(request:Request,maxBytes=128*1024):Promise<unknown>{
   const declared=Number(request.headers.get('content-length')??0);
-  if(declared>128*1024)throw invalidRequest('Request body too large');
+  if(declared>maxBytes)throw invalidRequest('Request body too large');
   if(!request.body)throw invalidRequest('Missing request body');
   const reader=request.body.getReader(),chunks:Uint8Array[]=[];let size=0;
   for(;;){
     const {done,value}=await reader.read();if(done)break;
-    size+=value.byteLength;if(size>128*1024){await reader.cancel();throw invalidRequest('Request body too large');}
+    size+=value.byteLength;if(size>maxBytes){await reader.cancel();throw invalidRequest('Request body too large');}
     chunks.push(value);
   }
   const bytes=new Uint8Array(size);let offset=0;
@@ -61,6 +65,30 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=planInputSchema.parse(await readJson(request));
       await authorizeContext(input.approvedContext as never);
       return json(await planStrategy(input as never));
+    }
+    if(path==='publications'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const key=request.headers.get('idempotency-key')??'';
+      const input=publicationInputSchema.parse(await readJson(request,8*1024*1024));
+      const service=getPublicationService(new URL(request.url).origin);
+      return json(await service.publishCard(owner,input.projection as never,input.confirmation as never,key),201,{'Cache-Control':'no-store'});
+    }
+    if(path.startsWith('publications/')&&segments.length===2){
+      const id=segments[1],service=getPublicationService(new URL(request.url).origin);
+      if(request.method==='GET')return json({projection:await service.readPublication(id)},200,{'Cache-Control':'no-store, max-age=0'});
+      if(request.method==='DELETE'){
+        if(!originOk(request))throw invalidRequest('Invalid origin');
+        const authorization=request.headers.get('authorization')??'';
+        if(!authorization.startsWith('Bearer '))throw invalidRequest('Missing revocation token');
+        await service.revokePublication(id,authorization.slice(7));return json({ok:true},200,{'Cache-Control':'no-store'});
+      }
+    }
+    if(path==='maintenance/cleanup'&&request.method==='POST'){
+      const secret=process.env.NEYMI_CLEANUP_SECRET;if(!secret||Buffer.byteLength(secret)<32)throw new ApiError('SERVICE_UNAVAILABLE','Cleanup is not configured',503);
+      const header=request.headers.get('authorization')??'',provided=Buffer.from(header.startsWith('Bearer ')?header.slice(7):''),expected=Buffer.from(secret);
+      if(provided.length!==expected.length||!timingSafeEqual(provided,expected))throw new ApiError('PERMISSION_DENIED','Permission denied',403);
+      return json(await runScheduledCleanup());
     }
     if(path==='research'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');
