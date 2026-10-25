@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
+import Link from 'next/link';
 import {ZodError} from 'zod';
 import type {LocalDraft,LocalProfile,ManualCardConfig} from '../domain/types';
 import {CardEditor} from '../modules/card/editor';
@@ -42,6 +43,7 @@ export default function Home(){
         {message&&<p role="status">{message}</p>}
       </div>
     </div>
+    <p style={{textAlign:'center',marginTop:32}}><Link href="/prepare">为不同接收人准备更有表现力的 AI 名片</Link></p>
     <footer>免注册的基础体验 · 本地优先 · 分享由你决定</footer>
   </main>;
 }

@@ -1,10 +1,12 @@
 import {readSession,createSession,sessionCookie} from './session';
 import {getConfiguredJobStore} from './store';
-import {ApiError,invalidRequest,notFound,unavailable} from './errors';
+import {ApiError,invalidRequest,notFound} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
+import {proposeSelfFacts} from '../modules/self/facts';
 import {ZodError} from 'zod';
 import {z} from 'zod';
 const jobInputSchema=z.strictObject({kind:z.literal('context'),context:z.unknown()});
+const factsInputSchema=z.strictObject({context:z.unknown()});
 
 const json=(body:unknown,status=200,headers?:HeadersInit)=>Response.json(body,{status,headers});
 async function readJson(request:Request):Promise<unknown>{
@@ -40,6 +42,13 @@ export async function route(request:Request,segments:string[]):Promise<Response>
     if(request.method==='DELETE'&&path==='session'){
       if(!originOk(request))throw invalidRequest('Invalid origin');
       return json({ok:true},200,{'Set-Cookie':'neymi_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'});
+    }
+    if(path==='facts'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=factsInputSchema.parse(await readJson(request));
+      await authorizeContext(input.context as never);
+      return json({facts:await proposeSelfFacts(input.context as never)});
     }
     if(!path.startsWith('jobs'))throw notFound();
     if(!originOk(request)&&request.method!=='GET')throw invalidRequest('Invalid origin');

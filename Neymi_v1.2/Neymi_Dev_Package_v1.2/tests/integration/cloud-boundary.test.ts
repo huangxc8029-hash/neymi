@@ -28,6 +28,20 @@ describe('anonymous cloud boundary',()=>{
       expect(readSession(new Request('https://neymi.example/',{headers:{cookie:cookie.replace(/.$/,'x')}}))).toBeNull();
     }finally{if(previous===undefined)delete process.env.NEYMI_SESSION_SECRET;else process.env.NEYMI_SESSION_SECRET=previous;}
   });
+  it('requires approved exact text and does not echo it when AI provider is unavailable',async()=>{
+    const previous=process.env.NEYMI_SESSION_SECRET;process.env.NEYMI_SESSION_SECRET='test-signing-secret-long-enough-123456';
+    try{
+      const origin='https://neymi.example',session=await route(new Request(`${origin}/v1/session`,{method:'POST',headers:{origin}}),['session']);
+      const cookie=session.headers.get('set-cookie')!.split(';')[0],text='I built a robotics demo.';
+      const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+      const contentDigest=Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,'0')).join('');
+      const context={approval:{id:'approval',contextId:'context_demo',contentDigest,purpose:'Extract facts',approvedAt:timestamp},text,factIds:[],moduleMetadata:[]};
+      const response=await route(new Request(`${origin}/v1/facts`,{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({context})}),['facts']);
+      expect(response.status).toBe(503);expect(await response.text()).not.toContain(text);
+      const changed=await route(new Request(`${origin}/v1/facts`,{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({context:{...context,text:'Changed text'}})}),['facts']);
+      expect(changed.status).toBe(403);
+    }finally{if(previous===undefined)delete process.env.NEYMI_SESSION_SECRET;else process.env.NEYMI_SESSION_SECRET=previous;}
+  });
   it('expires signed session cookies after 24 hours',async()=>{
     const previous=process.env.NEYMI_SESSION_SECRET;process.env.NEYMI_SESSION_SECRET='test-signing-secret-long-enough-123456';
     try{

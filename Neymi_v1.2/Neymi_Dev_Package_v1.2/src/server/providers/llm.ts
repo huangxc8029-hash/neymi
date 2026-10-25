@@ -6,7 +6,7 @@ export interface LLMProvider{
   plan(input:PlanningInput):Promise<unknown>;
 }
 export class UnconfiguredLLMProvider implements LLMProvider{
-  async proposeFacts(_context:ApprovedCloudContext):Promise<CandidateSelfFact[]>{throw unavailable('AI provider is not configured');}
-  async plan(_input:PlanningInput):Promise<{strategy:ConnectionStrategy;recipe:CardRecipe}>{throw unavailable('AI provider is not configured');}
+  async proposeFacts():Promise<CandidateSelfFact[]>{throw unavailable('AI provider is not configured');}
+  async plan():Promise<{strategy:ConnectionStrategy;recipe:CardRecipe}>{throw unavailable('AI provider is not configured');}
 }
 export function getLLMProvider():LLMProvider{return new UnconfiguredLLMProvider();}
