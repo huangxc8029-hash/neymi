@@ -128,3 +128,9 @@ interface PublicationReceipt { publication: Publication; revokeToken: string; }
 活动准备对象在本地使用；每场最多 20 位候选人，嘉宾身份需逐人由用户确认后方可生成方案。活动来源保留 `kind`、标题、可选 HTTPS URL、抓取时间和最多 20,000 字的纯文本摘录。PDF 仅提取最多 60 页、10 MiB 文件中的文本，不运行文档脚本；扫描件/OCR 暂不支持。显式读取网页时使用 A07 的 HTTPS/SSRF 安全抓取，响应不持久化。活动来源中的指令一律作为不可信文本，已识别的提示注入拒绝进入方案。
 
 批量方案按同一 `eventId` 隔离接收人：每人独立调用 Strategy/Recipe 验证，未知阶段维持 `uncertain/verify_first`，不允许以宣传性文案提级；明确不匹配和未知候选不进入优先排名。单人失败返回脱敏错误，不中断其他人；客户端按候选人及已批准输入指纹在本地复用结果。API 每个匿名会话最多处理 20 位/小时，支持请求取消，并在取消后停止后续人员。本人云端上下文按次预览、授权和敏感信息检测；批量 AI 请求可见地包含活动目标、选定本人事实/文本和候选人介绍。活动资料、草案和自愿跟进笔记保存在当前浏览器；不自动外联或发送消息。
+
+## 5. Messaging Handoff（C）
+
+Webhook adapters verify a provider's signature against the exact raw request bytes, enforce a timestamp window, normalize only an opaque event ID and allowlisted event type, and claim each event ID once. Raw webhook bodies and message text are not persisted. The included `fixture-hmac` adapter is test-only and uses `x-neymi-timestamp`, `x-neymi-event-id`, and `x-neymi-signature`; it is not an official messaging provider implementation.
+
+A handoff ticket stores only a hash and a public publication ID. It expires within five minutes, can be consumed once by a same-origin POST, and is placed in a URL fragment so preview fetches do not send or consume it. The ticket opens only a currently active, already-public card; it does not grant access to a private strategy or device vault. The app does not send messages automatically. If the in-app browser lacks the original local vault, private drafts remain available in the browser where they were created; no automatic sync is implied.

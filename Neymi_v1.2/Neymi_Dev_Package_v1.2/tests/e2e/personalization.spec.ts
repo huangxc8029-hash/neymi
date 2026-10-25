@@ -15,6 +15,8 @@ const plan={strategy:{recommendation:'prepare_introduction',confidence:'low',rec
 
 test('guest prepares, approves, shares, receives, and returns one personalized card',async({page})=>{
   await page.route('**/v1/session',route=>route.fulfill({status:201,json:{expiresAt:'2026-10-26T00:00:00.000Z'}}));
+  await page.route('**/v1/publications',route=>route.fulfill({status:201,json:{publication:{publicId:'publication_public123',url:'https://neymi.example/p/publication_public123',expiresAt:'2026-11-24T00:00:00.000Z'},revokeToken:'revoke-token-fixture'}}));
+  await page.route('**/v1/messaging/handoffs',route=>route.fulfill({status:201,json:{url:'https://neymi.example/handoff#ticket=fixture-ticket-value',expiresAt:'2026-10-25T00:05:00.000Z'}}));
   await page.route('**/v1/plan',route=>route.fulfill({status:200,json:plan}));
   await page.route('**/v1/research**',async route=>{
     const request=route.request(),path=new URL(request.url()).pathname;
@@ -46,6 +48,11 @@ test('guest prepares, approves, shares, receives, and returns one personalized c
   await expect(page.getByRole('region',{name:'我的名片'})).toContainText('Lin E2E');
   await page.getByRole('button',{name:'生成分享预览'}).click();
   await expect(page.locator('.share-confirmation pre')).not.toContainText('PRIVATE_UNSELECTED');
+  await page.getByRole('button',{name:'确认发布公开链接'}).click();
+  await expect(page.getByRole('button',{name:'创建一次性交接链接'})).toBeVisible();
+  await page.getByRole('button',{name:'创建一次性交接链接'}).click();
+  await expect(page.getByText('https://neymi.example/handoff#ticket=fixture-ticket-value')).toBeVisible();
+  await expect(page.getByRole('button',{name:'复制交接链接'})).toBeVisible();
   const downloadWait=page.waitForEvent('download');await page.getByRole('button',{name:'确认下载名片文件'}).click();
   const download=await downloadWait,bytes=await readFile(await download.path()!);
   expect(bytes.toString('utf8')).toContain('Lin E2E');expect(bytes.toString('utf8')).not.toContain('PRIVATE_UNSELECTED');

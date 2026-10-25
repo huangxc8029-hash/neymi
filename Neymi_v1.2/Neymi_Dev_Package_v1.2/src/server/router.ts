@@ -6,6 +6,7 @@ import {proposeSelfFacts} from '../modules/self/facts';
 import {getResearchService} from './research-runtime';
 import {planStrategy} from '../modules/strategy/plan';
 import {getPublicationService} from './publication-runtime';
+import {getFixtureMessagingAdapter,getMessagingService} from './messaging-runtime';
 import {fetchPublic} from './fetch-public';
 import {validateActivityText} from '../modules/activity/service';
 import {planActivity} from '../modules/activity/planning';
@@ -21,6 +22,8 @@ const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),a
 const publicationInputSchema=z.strictObject({projection:z.unknown(),confirmation:z.unknown()});
 const activitySourceInputSchema=z.strictObject({url:z.string().url().max(2048)});
 const activityPlanInputSchema=z.strictObject({eventId:z.string().min(1).max(128),context:z.unknown(),approvedContext:z.unknown(),researches:z.array(z.unknown()).min(1).max(20)});
+const handoffInputSchema=z.strictObject({publicationId:z.string().regex(/^[A-Za-z0-9_-]{16,64}$/)});
+const consumeHandoffInputSchema=z.strictObject({ticket:z.string().regex(/^[A-Za-z0-9_-]{40,60}$/)});
 const activityPlanUsage=new Map<string,Array<{at:number;count:number}>>();
 function consumeActivityPlanBudget(owner:string,count:number){
   const now=Date.now();for(const [key,entries]of activityPlanUsage){const current=entries.filter(entry=>entry.at>now-60*60*1000);if(current.length)activityPlanUsage.set(key,current);else activityPlanUsage.delete(key);}
@@ -43,6 +46,13 @@ async function readJson(request:Request,maxBytes=128*1024):Promise<unknown>{
   const bytes=new Uint8Array(size);let offset=0;
   for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
   return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+}
+async function readRawBody(request:Request,maxBytes=64*1024):Promise<string>{
+  const declared=Number(request.headers.get('content-length')??0);if(declared>maxBytes)throw invalidRequest('Request body too large');
+  if(!request.body)throw invalidRequest('Missing request body');const reader=request.body.getReader(),chunks:Uint8Array[]=[];let size=0;
+  for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>maxBytes){await reader.cancel();throw invalidRequest('Request body too large');}chunks.push(value);}
+  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes);}catch{throw invalidRequest('Webhook body must be UTF-8');}
 }
 function originOk(request:Request):boolean{
   const url=new URL(request.url),host=request.headers.get('host')??request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
@@ -98,6 +108,24 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       consumeActivityPlanBudget(owner,input.researches.length);
       let results;try{results=await planActivity(input as never,{signal:request.signal});}catch{throw invalidRequest('Activity plans require confirmed recipients in one event');}
       return json({results},200);
+    }
+    if(path==='messaging/webhook'&&request.method==='POST'){
+      const adapter=getFixtureMessagingAdapter(),rawBody=await readRawBody(request),event=adapter.verify(rawBody,request.headers);
+      const accepted=await getMessagingService().acceptEvent('fixture-hmac',event.eventId);
+      return json({accepted:true,...(accepted==='duplicate'?{duplicate:true}:{})},accepted==='duplicate'?200:202);
+    }
+    if(path==='messaging/handoffs'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');const owner=readSession(request);if(!owner)throw notFound();
+      const input=handoffInputSchema.parse(await readJson(request,4096)),origin=new URL(request.url).origin;
+      await getPublicationService(origin).readPublication(input.publicationId);
+      const handoff=await getMessagingService().issueHandoff(input.publicationId);
+      return json({url:`${origin}/handoff#ticket=${encodeURIComponent(handoff.ticket)}`,expiresAt:handoff.expiresAt},201);
+    }
+    if(path==='messaging/handoffs/consume'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');const {ticket}=consumeHandoffInputSchema.parse(await readJson(request,4096));
+      const publicationId=await getMessagingService().consumeHandoff(ticket);if(!publicationId)throw notFound();
+      try{await getPublicationService(new URL(request.url).origin).readPublication(publicationId);}catch{throw notFound();}
+      return json({publicationId});
     }
     if(path==='publications'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');
