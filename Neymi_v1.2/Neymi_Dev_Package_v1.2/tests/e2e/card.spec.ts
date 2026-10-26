@@ -1,6 +1,22 @@
 import {expect,test} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 
+test('contacts are visible in the basic form and cancelling encryption never persists the draft',async({page})=>{
+  await page.goto('/');
+  const form=page.getByRole('region',{name:'创建你的名片'});
+  for(const label of ['邮箱','电话','微信','WhatsApp'])await expect(form.getByLabel(label,{exact:true})).toBeVisible();
+  await form.getByLabel('展示名称').fill('Memory only');
+  await form.getByLabel('电话',{exact:true}).fill('+1 415 555 0111');
+  await form.getByRole('button',{name:'加密保存联系方式'}).click();
+  await expect(form.getByLabel('为敏感资料设置本地口令')).toBeVisible();
+  await form.getByRole('button',{name:'取消密码设置'}).click();
+  await form.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.reload();
+  await expect(page.getByLabel('电话',{exact:true})).toHaveValue('');
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+});
+
 test('first visit shows a visual card example, contact channels and an AI assistant path',async({page})=>{
   await page.goto('/');
   await expect(page.getByRole('region',{name:'示例名片'})).toBeVisible();
@@ -146,7 +162,8 @@ test('AI preparation stays optional and blocks contact details before cloud cons
 test('guest encrypts contact methods and shares only the chosen one',async({page})=>{
   await page.goto('/');
   await page.getByLabel('展示名称').fill('Lin Contact');
-  await page.getByRole('button',{name:'填写联系方式'}).click();
+  await page.getByLabel('邮箱',{exact:true}).fill('lin@example.org');
+  await page.getByRole('button',{name:'加密保存联系方式'}).click();
   await page.getByLabel('为敏感资料设置本地口令').fill('correct horse battery');
   await page.getByRole('button',{name:'创建加密区'}).click();
   await page.getByLabel('邮箱').fill('lin@example.org');
@@ -170,7 +187,22 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   expect(text).not.toContain('+1 415 555 0100');expect(text).not.toContain('lin_wechat');expect(text).not.toContain('+44 7700 900123');
   await page.reload();
   await expect(page.getByRole('textbox',{name:'展示名称'})).toHaveValue('Lin Contact');
-  await expect(page.getByLabel('邮箱')).toHaveCount(0);
+  await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
+  await page.getByLabel('展示名称').fill('Renamed while locked');
+  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.getByRole('button',{name:'解锁联系方式'}).click();
+  await page.getByLabel('解锁本地敏感资料').fill('wrong password');
+  await page.getByRole('button',{name:'解锁',exact:true}).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
+  await page.getByLabel('解锁本地敏感资料').fill('correct horse battery');
+  await page.getByRole('button',{name:'解锁',exact:true}).click();
+  await expect(page.getByLabel('邮箱',{exact:true})).toHaveValue('lin@example.org');
+  await expect(page.getByLabel('微信',{exact:true})).toHaveValue('lin_wechat');
+  await page.getByLabel('邮箱',{exact:true}).fill('bad-email');
+  await page.getByRole('button',{name:'加密保存联系方式'}).click();
+  await expect(page.locator('.contact-panel [role="status"]')).toContainText('基础信息已保存；联系方式未保存');
 });
 
 test('assistant asks follow-up without retransmitting earlier turns',async({page})=>{

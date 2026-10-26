@@ -1,6 +1,7 @@
 'use client';
 import type {LocalProfile,Motion} from '../../domain/types';
-export function CardEditor({profile,onChange,onPreview,motion,onMotion}:{profile:LocalProfile;onChange:(profile:LocalProfile)=>void;onPreview:()=>void;motion:Motion;onMotion:(motion:Motion)=>void}){
+import type {ReactNode} from 'react';
+export function CardEditor({profile,onChange,onPreview,motion,onMotion,children}:{profile:LocalProfile;onChange:(profile:LocalProfile)=>void;onPreview:()=>void;motion:Motion;onMotion:(motion:Motion)=>void;children?:ReactNode}){
   function identity(key:'name'|'company'|'role',value:string){onChange({...profile,revision:profile.revision+1,identity:{...profile.identity,[key]:value}});}
   function addSection(){
     const id=`module_${crypto.randomUUID().replaceAll('-','')}`;
@@ -16,6 +17,7 @@ export function CardEditor({profile,onChange,onPreview,motion,onMotion}:{profile
     <input id="company" maxLength={120} value={profile.identity.company??''} onChange={event=>identity('company',event.target.value)}/>
     <label htmlFor="role">角色</label>
     <input id="role" maxLength={120} value={profile.identity.role??''} onChange={event=>identity('role',event.target.value)}/>
+    {children}
     {profile.modules.map(section=><fieldset key={section.id}><legend>展示模块</legend>
       <label htmlFor={`${section.id}-title`}>标题</label>
       <input id={`${section.id}-title`} value={section.title} onChange={event=>sectionTitle(section.id,event.target.value)}/>

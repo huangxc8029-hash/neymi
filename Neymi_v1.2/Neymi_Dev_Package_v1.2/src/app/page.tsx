@@ -65,7 +65,7 @@ export default function Home(){
         const contacts=contactItems(await vault.readContacts());
         if(contacts.length)next={...next,modules:[...next.modules.filter(section=>section.id!==CONTACT_MODULE_ID),{id:CONTACT_MODULE_ID,kind:'contact',title:'联系方式',items:contacts}]};
       }
-      setProfile(saved);setDraft(next);setMessage(vault.isUnlocked()?'已保存在此浏览器。联系方式需逐项选择后才能分享。':'已保存在此浏览器。解锁加密区后可预览联系方式。');
+      setProfile(saved);setDraft(next);setMessage(vault.isUnlocked()?'基础信息已保存在此浏览器。联系方式请使用「加密保存联系方式」单独保存。':'基础信息已保存在此浏览器。联系方式草稿未随本次保存；请单独加密保存。');
     }catch(error){
       setMessage(error instanceof ZodError?'检测到联系方式。请在本地加密资料区保存这类信息。':
         error instanceof DOMException&&error.name==='QuotaExceededError'?'浏览器存储空间不足，当前资料仍在本页。':
@@ -80,7 +80,7 @@ export default function Home(){
       <p className="intro">一张清楚表达你是谁的名片。内容由你决定，分享也由你确认。</p></div>
       <a className="hero-action" href="#card-form">创建我的名片 <span aria-hidden="true">↓</span></a></section>
     <div className="studio" id="card-form">
-      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} onPreview={preview} motion={motion} onMotion={value=>{setMotion(value);if(profile.identity.name?.trim())setDraft(createManualDraft(profile,manualConfig(profile,selectedTemplate,value)));}}/><ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);setDraft(createManualDraft(saved,manualConfig(saved,selectedTemplate,motion)));}}/></div>
+      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} onPreview={preview} motion={motion} onMotion={value=>{setMotion(value);if(profile.identity.name?.trim())setDraft(createManualDraft(profile,manualConfig(profile,selectedTemplate,value)));}}><ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);setDraft(createManualDraft(saved,manualConfig(saved,selectedTemplate,motion)));}}/></CardEditor></div>
       <aside className="preview-panel">
         {draft?<><div className="preview-heading"><div><h2>你的名片</h2><p>修改时实时更新，保存后留在此浏览器。</p></div><span className="example-tag live-tag">实时预览</span></div><CardRenderer draft={draft}/></>:<DemoCard templateId={selectedTemplate}/>}
         <TemplatePicker selected={selectedTemplate} onSelect={chooseTemplate}/>
