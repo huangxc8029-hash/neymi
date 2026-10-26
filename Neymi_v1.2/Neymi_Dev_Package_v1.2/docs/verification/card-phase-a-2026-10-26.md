@@ -19,3 +19,7 @@ Task 3: complete. RED: new link tests exposed vCard URLs serialized as NOTE and 
 
 ## Phase B
 Task 4: complete. RED: assistant prompt module/UI absent; browser tests confirmed missing prompt and modal focus return. GREEN: 2 prompt unit tests and 3 browser cases for 7-second rotation/pause, one cycle, focus return/Escape, route persistence, tab dismissal and protected-route absence. Reduced-motion behavior is implemented as a static launcher. Shared session state remains in memory only; dismissal alone uses sessionStorage.
+
+Task 5: complete. Strategy boundary integration test passed. Shared coach calls existing /v1/session and /v1/coach only after per-message approval; outgoing body uses current text plus explicitly selected confirmed facts, never chat history or contacts. Candidate facts are saved only after individual user action. Prepare route retains manual fact and research/strategy panels. Existing StrategyPanel reports generated strategy and locally composed draft to shared in-memory assistant; ActivityPage reports event progress/results there while retaining its existing localStorage activity store and per-recipient approval.
+
+Task 6: complete. Full record in `docs/verification/card-and-assistant-2026-10-26.md`. Typecheck/lint passed; 156 unit passed/2 skipped; integration boundary passed; formal E2E 32/32 passed with one worker; card visual 3/3 passed; production build succeeded. Desktop/mobile assistant screenshots saved under `screenshots/`. Real providers and real-device browser matrix remain NOT RUN; no deployment or push.

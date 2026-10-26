@@ -15,7 +15,7 @@ import type {ProfileItem} from '../../domain/types';
 import {useEffect} from 'react';
 
 type Plan={mode?:'ai'|'rule';strategy:{recommendation:string;confidence:string;recommendedFocus:string;whyTheyMayCare:string;mainPoint:string;openingLine:string;uncertainties:string[]};recipe:CardRecipe};
-export function StrategyPanel({research,context,facts,profile,deviceId,vault,initialPlan}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault;initialPlan?:Plan}){
+export function StrategyPanel({research,context,facts,profile,deviceId,vault,initialPlan,onAssistantUpdate}:{research:RecipientResearch;context:InteractionContext;facts:ConfirmedSelfFact[];profile:LocalProfile;deviceId:string;vault:Vault;initialPlan?:Plan;onAssistantUpdate?:(message:string)=>void}){
   const [selectedFacts,setSelectedFacts]=useState<string[]>([]),[cloudApproved,setCloudApproved]=useState(false),[result,setResult]=useState<Plan|null>(()=>initialPlan??null),[resultRevision,setResultRevision]=useState<number|null>(()=>initialPlan?profile.revision:null);
   const [selectedIdentity,setSelectedIdentity]=useState<Array<'name'|'company'|'role'>>([]),[selectedFields,setSelectedFields]=useState<string[]>([]);
   const [localApproved,setLocalApproved]=useState(false),[privateLabel,setPrivateLabel]=useState(research.recipient.displayName);
@@ -38,7 +38,7 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
       const session=await fetch('/v1/session',{method:'POST'});if(!session.ok)throw new Error('无法建立匿名会话。');
       const response=await fetch('/v1/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({context,research,approvedContext})});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'方案暂不可用。');
-      setResult(body as Plan);setResultRevision(profile.revision);setDraft(null);setSelectedIdentity([]);setSelectedFields([]);setLocalApproved(false);setStatus(body.mode==='ai'?'AI 方案已生成，请核对事实与来源后再使用。':'方案已生成。当前内容是规则草案，仍需你判断和编辑。');
+      setResult(body as Plan);setResultRevision(profile.revision);setDraft(null);setSelectedIdentity([]);setSelectedFields([]);setLocalApproved(false);setStatus(body.mode==='ai'?'AI 方案已生成，请核对事实与来源后再使用。':'方案已生成。当前内容是规则草案，仍需你判断和编辑。');onAssistantUpdate?.(`单人表达方案已生成：${body.strategy.recommendedFocus}。请在页面核对依据与不确定项；本地合成及最终分享仍需分别确认。`);
     }catch(error){setStatus(error instanceof Error?error.message:'方案暂不可用。');}
     finally{setBusy(false);}
   }
@@ -51,7 +51,7 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
       const now=new Date().toISOString(),config:CardRecipe={...result.recipe,orderedModules:moduleRefs,updatedAt:now};
       const request:GrantRequest={profileId:profile.id,deviceId,cardId:config.id,fields:chosen.map(({moduleId,itemId})=>({moduleId,itemId})),identity:selectedIdentity,assetIds:[],purpose:'为本次接收人名片在本地合成',operation:'compose_local'};
       const grant=createGrant(request,now),localDraft=await composeDraft(config,grant,vault,request,now,profile.revision);
-      setDraft(localDraft);setStatus('已按本次授权在本地合成。公开分享仍需单独选择和确认。');
+      setDraft(localDraft);setStatus('已按本次授权在本地合成。公开分享仍需单独选择和确认。');onAssistantUpdate?.('已按本次授权在本地合成名片草稿。你可以在页面预览；分享需要再次逐项选择并确认。');
     }catch(error){setStatus(error instanceof Error?error.message:'本地合成失败。请确认资料库已解锁。');}
     finally{setBusy(false);}
   }

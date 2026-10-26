@@ -1,8 +1,8 @@
-const CACHE='neymi-shell-v2';
+const CACHE='neymi-shell-v3';
 const SHELL=['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'];
 function cachePolicy(pathname){
   if(/^\/p(?:\/|$)/.test(pathname)||/^\/v1\/publications(?:\/|$)/.test(pathname))return'network-only';
-  if(['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'].includes(pathname)||pathname.startsWith('/_next/static/'))return'cache-first';
+  if(['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'].includes(pathname)||pathname.startsWith('/_next/static/')||pathname.startsWith('/card-backgrounds/'))return'cache-first';
   return'network-only';
 }
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));

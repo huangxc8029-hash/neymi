@@ -26,21 +26,37 @@ export async function renderImage(projection:ShareProjection):Promise<Blob>{
   const p=shareProjectionSchema.parse(projection);
   const canvas=document.createElement('canvas');canvas.width=1500;canvas.height=900;
   const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas unavailable');
-  const template=getCardTemplate(p.templateId),gradient=ctx.createLinearGradient(0,0,1500,900);gradient.addColorStop(0,template.start);gradient.addColorStop(1,template.end);
+  const template=getCardTemplate(p.templateId),gradient=ctx.createLinearGradient(0,0,1500,900);
+  gradient.addColorStop(0,template.start);gradient.addColorStop(1,template.end);
   ctx.fillStyle=gradient;ctx.fillRect(0,0,1500,900);
-  ctx.fillStyle=template.ink;ctx.font='bold 45px sans-serif';ctx.fillText('neymi',90,115);
-  ctx.fillStyle=template.accent;ctx.beginPath();ctx.arc(245,98,7,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=template.ink;ctx.font='bold 90px sans-serif';ctx.fillText(p.identity.name??'',90,360,1280);
-  ctx.fillStyle=template.muted;ctx.font='38px sans-serif';ctx.fillText([p.identity.role,p.identity.company].filter(Boolean).join(' · '),90,430,1250);
-  ctx.font='30px sans-serif';let y=555;
-  for(const section of [...p.modules].sort((a,b)=>Number(b.kind==='contact')-Number(a.kind==='contact')))for(const item of section.items){
-    if(y>800)break;
-    ctx.fillText(`${section.title} · ${item.label}: ${item.value}`,90,y,1300);y+=55;
+  if(template.image){
+    const response=await fetch(template.image);if(!response.ok)throw new Error('Card background unavailable');
+    const bitmap=await createImageBitmap(await response.blob());
+    try{const scale=Math.max(1500/bitmap.width,900/bitmap.height),w=bitmap.width*scale,h=bitmap.height*scale;ctx.drawImage(bitmap,(1500-w)/2,(900-h)/2,w,h);}finally{bitmap.close();}
+    const shade=ctx.createLinearGradient(0,0,1500,0);shade.addColorStop(0,template.start+'ed');shade.addColorStop(.58,template.start+'a6');shade.addColorStop(.9,template.start+'00');ctx.fillStyle=shade;ctx.fillRect(0,0,1500,900);
   }
-  if(p.publicDedication){ctx.font='28px sans-serif';ctx.fillText(p.publicDedication,90,825,1300);}
-  for(let i=0;i<p.assets.length;i++){
-    const asset=p.assets[i],bitmap=await createImageBitmap(new Blob([fromBase64(asset.base64) as BlobPart],{type:asset.mime}));
-    ctx.drawImage(bitmap,1250-(i%3)*130,60,110,110);bitmap.close();
+  if(p.assets[0]){
+    const asset=p.assets[0],bitmap=await createImageBitmap(new Blob([fromBase64(asset.base64) as BlobPart],{type:asset.mime}));
+    try{const scale=Math.min(220/bitmap.width,110/bitmap.height);ctx.drawImage(bitmap,82,65,bitmap.width*scale,bitmap.height*scale);}finally{bitmap.close();}
   }
+  ctx.fillStyle=template.ink;ctx.font='600 82px sans-serif';ctx.fillText(p.identity.name??'',82,290,1250);
+  ctx.fillStyle=template.muted;ctx.font='32px sans-serif';ctx.fillText([p.identity.company,p.identity.role].filter(Boolean).join(' · '),82,350,1250);
+  const contacts=p.modules.filter(section=>section.kind==='contact').flatMap(section=>section.items);
+  for(let i=0;i<Math.min(contacts.length,4);i++){
+    const item=contacts[i],x=82+(i%2)*640,y=460+Math.floor(i/2)*115;
+    ctx.fillStyle=template.muted;ctx.font='24px sans-serif';ctx.fillText(item.label,x,y,580);
+    ctx.fillStyle=template.ink;ctx.font='30px sans-serif';ctx.fillText(item.value,x,y+43,580);
+  }
+  ctx.font='26px sans-serif';let x=82;
+  for(const section of p.modules.filter(section=>section.kind!=='contact')){
+    const width=Math.min(330,ctx.measureText(section.title).width+70);if(x+width>1418)break;
+    ctx.strokeStyle=template.muted;ctx.lineWidth=1;ctx.strokeRect(x,718,width,62);
+    ctx.fillStyle=template.ink;ctx.fillText(section.title,x+22,758,width-44);x+=width+22;
+  }
+  if(p.publicDedication){ctx.fillStyle=template.muted;ctx.font='23px sans-serif';ctx.fillText(p.publicDedication,82,665,1280);}
+  ctx.globalAlpha=.48;ctx.textAlign='right';ctx.fillStyle=template.ink;
+  ctx.font='19px sans-serif';ctx.fillText('your secure cyber card manager',1418,851);
+  const captionWidth=ctx.measureText('your secure cyber card manager').width;
+  ctx.font='600 30px sans-serif';ctx.fillText('Neymi',1418-captionWidth-20,851);ctx.globalAlpha=1;
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG export failed')),'image/png'));
 }

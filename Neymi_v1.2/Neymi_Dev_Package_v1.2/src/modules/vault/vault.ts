@@ -1,5 +1,5 @@
 import type {FieldRef,LocalAsset,LocalDraft,LocalProfile,ProfileItem} from '../../domain/types';
-import {localDraftSchema,localProfileSchema} from '../../domain/schemas';
+import {localAssetSchema,localDraftSchema,localProfileSchema} from '../../domain/schemas';
 import {deriveKey,fromBase64,KDF_ITERATIONS,open,randomBase64,seal,toBase64} from './crypto';
 import type {VaultStorage} from './storage';
 import {CONTACT_MODULE_ID,contactItems,emptyContacts,type ContactValues} from '../card/contacts';
@@ -106,6 +106,17 @@ export class Vault{
   async readIdentity(keys:Array<'name'|'company'|'role'>):Promise<LocalProfile['identity']>{
     const identity=(await this.publicProfile()).identity;
     return Object.fromEntries(keys.filter(key=>identity[key]!==undefined).map(key=>[key,identity[key]]));
+  }
+  async readCardLogo():Promise<LocalAsset|null>{
+    const asset=(await this.secret()).assets.find(asset=>asset.id==='card_logo');
+    return asset?{id:asset.id,mime:asset.mime,bytes:fromBase64(asset.base64)}:null;
+  }
+  async saveCardLogo(asset:LocalAsset|null):Promise<void>{
+    if(asset)localAssetSchema.parse(asset);
+    const previous=await this.secret();
+    const assets=previous.assets.filter(item=>item.id!=='card_logo');
+    if(asset)assets.unshift({id:'card_logo',mime:asset.mime,base64:toBase64(asset.bytes)});
+    await this.storage.set(CIPHER,await seal(this.key!,{...previous,assets}));this.touch();
   }
   async readAssets(ids:string[]):Promise<LocalAsset[]>{
     if(!ids.length)return [];

@@ -2,7 +2,8 @@
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {ZodError} from 'zod';
-import type {LocalDraft,LocalProfile,ManualCardConfig,Motion} from '../domain/types';
+import type {LocalAsset,LocalDraft,LocalProfile,ManualCardConfig,Motion,ProfileItem} from '../domain/types';
+import {LogoPanel} from '../modules/card/logo-panel';
 import {CardEditor} from '../modules/card/editor';
 import {ContactPanel} from '../modules/card/contact-panel';
 import {DemoCard} from '../modules/card/demo-card';
@@ -34,7 +35,19 @@ export default function Home(){
   const [selectedTemplate,setSelectedTemplate]=useState<CardTemplateId>(DEFAULT_CARD_TEMPLATE);
   const [motion,setMotion]=useState<Motion>('float');
   const [message,setMessage]=useState('');
+  const [logo,setLogo]=useState<LocalAsset|null>(null),[privateContacts,setPrivateContacts]=useState<ProfileItem[]>([]);
   const vault=useMemo(()=>createVault(new IndexedDbVaultStorage()),[]);
+  useEffect(()=>{
+    let wasUnlocked=false;
+    const timer=setInterval(()=>{
+      const unlocked=vault.isUnlocked();
+      if(unlocked===wasUnlocked)return;wasUnlocked=unlocked;
+      if(!unlocked){setLogo(null);setPrivateContacts([]);return;}
+      void Promise.all([vault.readCardLogo(),vault.readContacts()]).then(([asset,values])=>{if(vault.isUnlocked()){setLogo(asset);setPrivateContacts(contactItems(values));}}).catch(()=>{});
+    },500);
+    return()=>clearInterval(timer);
+  },[vault]);
+  const visibleDraft=draft?{...draft,assets:logo?[logo]:[],modules:[...draft.modules.filter(section=>section.id!==CONTACT_MODULE_ID),...(privateContacts.length?[{id:CONTACT_MODULE_ID,kind:'contact',title:'联系方式',items:privateContacts}]:[])]}:null;
   useEffect(()=>{
     const templateId=getSavedTemplate();
     Promise.resolve().then(()=>setSelectedTemplate(templateId));
@@ -80,11 +93,11 @@ export default function Home(){
       <p className="intro">一张清楚表达你是谁的名片。内容由你决定，分享也由你确认。</p></div>
       <a className="hero-action" href="#card-form">创建我的名片 <span aria-hidden="true">↓</span></a></section>
     <div className="studio" id="card-form">
-      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} onPreview={preview} motion={motion} onMotion={value=>{setMotion(value);if(profile.identity.name?.trim())setDraft(createManualDraft(profile,manualConfig(profile,selectedTemplate,value)));}}><ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);setDraft(createManualDraft(saved,manualConfig(saved,selectedTemplate,motion)));}}/></CardEditor></div>
+      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} onPreview={preview} motion={motion} onMotion={value=>{setMotion(value);if(profile.identity.name?.trim())setDraft(createManualDraft(profile,manualConfig(profile,selectedTemplate,value)));}}><LogoPanel vault={vault} logo={logo} onChanged={setLogo}/><ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);setDraft(createManualDraft(saved,manualConfig(saved,selectedTemplate,motion)));void vault.readContacts().then(values=>setPrivateContacts(contactItems(values))).catch(()=>setPrivateContacts([]));}}/></CardEditor></div>
       <aside className="preview-panel">
-        {draft?<><div className="preview-heading"><div><h2>你的名片</h2><p>修改时实时更新，保存后留在此浏览器。</p></div><span className="example-tag live-tag">实时预览</span></div><CardRenderer draft={draft}/></>:<DemoCard templateId={selectedTemplate}/>}
+        {visibleDraft?<><div className="preview-heading"><div><h2>你的名片</h2><p>修改时实时更新，保存后留在此浏览器。</p></div><span className="example-tag live-tag">实时预览</span></div><CardRenderer draft={visibleDraft}/></>:<DemoCard templateId={selectedTemplate}/>}
         <TemplatePicker selected={selectedTemplate} onSelect={chooseTemplate}/>
-        {draft&&<SharePreview key={`${draft.profileRevision}-${draft.config.templateId}`} draft={draft}/>}
+        {visibleDraft&&<SharePreview key={`${visibleDraft.profileRevision}-${visibleDraft.config.templateId}-${logo?.bytes.length??0}-${privateContacts.map(item=>item.value).join('|')}`} draft={visibleDraft}/>}
         {message&&<p className="save-status" role="status">{message}</p>}
         <section className="assistant-panel" aria-labelledby="assistant-title"><div className="assistant-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3v6m0 14v6M3 16h6m14 0h6M6.8 6.8 11 11m10 10 4.2 4.2m0-19.4L21 11m-10 10-4.2 4.2"/><circle cx="16" cy="16" r="5"/></svg></div><div className="assistant-copy"><h2 id="assistant-title">为重要交流做更多准备</h2><p>和 AI 梳理你的特点，为具体对象准备表达重点。</p></div><Link className="assistant-link" href="/prepare">开始 AI 个性化准备 <span aria-hidden="true">→</span></Link><p className="assistant-config-note">AI 服务需配置 DeepSeek 密钥</p></section>
       </aside>

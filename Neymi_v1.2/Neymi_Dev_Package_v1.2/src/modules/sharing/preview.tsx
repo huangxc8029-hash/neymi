@@ -46,6 +46,7 @@ export function SharePreview({draft}:{draft:LocalDraft}){
         onChange={()=>toggleField({moduleId:section.id,itemId:item.id})}/>
       {section.title} · {item.label}：{item.value}
     </label>))}
+    {draft.assets.map(asset=><label key={asset.id}><input type="checkbox" checked={selection.assetIds.includes(asset.id)} onChange={event=>update({...selection,assetIds:event.target.checked?[...selection.assetIds,asset.id]:selection.assetIds.filter(id=>id!==asset.id)})}/>公开 Logo 或图片</label>)}
     <button type="button" onClick={()=>{try{setProjection(projectShare(draft,selection));setMessage('请核对下面的公开预览。');}catch{setMessage('选中的内容无效，请检查。');}}}>生成分享预览</button>
     {projection&&<div className="share-confirmation">
       <h3>最终公开预览</h3><pre>{JSON.stringify(projection,null,2)}</pre>

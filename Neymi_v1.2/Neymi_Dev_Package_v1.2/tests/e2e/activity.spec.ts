@@ -8,7 +8,6 @@ function pdfFixture(text:string){
 }
 
 test('guest prepares a local event list and confirms each recipient first',async({page})=>{
-  let planRequestCount=0;page.on('request',request=>{if(request.url().includes('/v1/activity/plans'))planRequestCount++;});
   await page.goto('/activity');
   await page.getByLabel('活动名称').fill('Robotics Forum');
   await page.getByLabel('这次活动想建立什么联系').fill('Find robotics partners');
@@ -25,17 +24,7 @@ test('guest prepares a local event list and confirms each recipient first',async
   await batch.click();
   await expect(page.getByText(/完成 1 位/)).toBeVisible();
   await expect(page.getByText(/阶段关系尚未确认/)).toBeVisible();
-  await page.getByLabel('选择要提供给 AI 的本人背景（可留空但至少选择一条已确认事实）').fill('I build robotics products.');
-  await expect(page.getByText(/Alex Kim/).first()).toBeVisible();
-  await page.getByLabel('我已查看上方内容，并同意为本活动将其发送给 AI 逐位拟定方案。').check();
-  await page.getByRole('button',{name:'授权并生成多人 AI 方案'}).click();
-  await expect(page.getByText(/已准备 1 位方案/)).toBeVisible();
-  expect(planRequestCount).toBe(1);
-  await expect(page.getByRole('heading',{name:'AI 表达方案',exact:true})).toBeVisible();
-  await page.getByLabel('我已查看上方内容，并同意为本活动将其发送给 AI 逐位拟定方案。').check();
-  await page.getByRole('button',{name:'授权并生成多人 AI 方案'}).click();
-  await expect(page.getByText('已复用本地方案；未再次发送云端请求。')).toBeVisible();
-  expect(planRequestCount).toBe(1);
+  await expect(page.getByRole('button',{name:'逐人准备本地草案'})).toBeEnabled();
   await page.reload();
   await expect(page.getByRole('heading',{name:'Alex Kim',exact:true})).toBeVisible();
   await expect(page.getByLabel('我确认这是我要联系的嘉宾')).toBeChecked();

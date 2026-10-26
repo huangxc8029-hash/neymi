@@ -60,6 +60,6 @@ test('guest prepares, approves, shares, receives, and returns one personalized c
   await page.getByLabel('导入 Neymi 名片文件').setInputFiles({name:'lin-card.ncard',mimeType:'application/json',buffer:bytes});
   await expect(page.getByRole('heading',{name:'Lin E2E'})).toBeVisible();
   await page.getByRole('link',{name:'回赠我的名片'}).click();
-  await expect(page.getByLabel('展示名称')).toHaveValue('Lin E2E');
+  await expect(page.getByRole('textbox',{name:'展示名称'})).toHaveValue('Lin E2E');
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 import {readSession,createSession,sessionCookie} from './session';
 import {getConfiguredJobStore} from './store';
-import {ApiError,invalidRequest,notFound,rateLimited} from './errors';
+import {ApiError,invalidRequest,notFound,rateLimited,unavailable} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
 import {proposeSelfFacts} from '../modules/self/facts';
 import {coachSelfIntro,getLLMProvider,UnconfiguredLLMProvider} from './providers/llm';
@@ -114,6 +114,7 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const owner=readSession(request);if(!owner)throw notFound();
       const input=activityPlanInputSchema.parse(await readJson(request));
       await authorizeContext(input.approvedContext as never);
+      if(getLLMProvider() instanceof UnconfiguredLLMProvider)throw unavailable('Activity planning service is not configured; continue with local preparation.');
       consumeActivityPlanBudget(owner,input.researches.length);
       let results;try{results=await planActivity(input as never,{signal:request.signal});}catch{throw invalidRequest('Activity plans require confirmed recipients in one event');}
       return json({results},200);

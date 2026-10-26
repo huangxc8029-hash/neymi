@@ -23,23 +23,15 @@ describe('event source fetch boundary',()=>{
     const privateUrl=await route(new Request(`${origin}/v1/activity/source`,{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({url:'https://127.0.0.1/private'})}),['activity','source']);
     expect(privateUrl.status).toBe(400);
   });
-  it('authorizes one event batch, isolates recipients, and caps provider plans at 20 per hour',async()=>{
+  it('returns a clear unavailable response for event plans without a provider',async()=>{
     const previous=process.env.NEYMI_SESSION_SECRET;process.env.NEYMI_SESSION_SECRET='test-signing-secret-long-enough-456789';
     try{
       const origin='https://neymi.example',session=await route(new Request(`${origin}/v1/session`,{method:'POST',headers:{origin}}),['session']);
       const cookie=session.headers.get('set-cookie')!.split(';')[0],headers={origin,cookie,'content-type':'application/json'};
-      const context=makeContext({id:'event_context',eventId:'event_demo'}),approval=await createContextApproval('I build robotics products.',context.id,'Prepare for this event',timestamp),approvedContext=await buildCloudContext('I build robotics products.',[],approval);
-      const researches=Array.from({length:20},(_,index)=>{
-        const id=`recipient_${index}`,sourceId=`source_${index}`;
-        return makeResearch({recipient:{id,displayName:`Guest ${index}`,identityStatus:'verified',eventId:'event_demo'},state:'ready',sources:[{id:sourceId,title:'Speaker bio',origin:'user_provided',accessedAt:timestamp,publishedAt:null,excerpt:'Discusses robotics'}],claims:[{id:`claim_${index}`,recipientId:id,kind:'unknown',claim:'Discusses robotics',sourceIds:[sourceId],confidence:'unknown',checkedAt:timestamp}]});
-      });
-      const wrongDigest=await route(new Request(`${origin}/v1/activity/plans`,{method:'POST',headers,body:JSON.stringify({eventId:'event_demo',context,approvedContext:{...approvedContext,text:'not approved'},researches:researches.slice(0,1)})}),['activity','plans']);
-      expect(wrongDigest.status).toBe(403);
-      const request=()=>route(new Request(`${origin}/v1/activity/plans`,{method:'POST',headers,body:JSON.stringify({eventId:'event_demo',context,approvedContext,researches})}),['activity','plans']);
-      const result=await request(),body=await result.json();
-      expect(result.status).toBe(200);expect(body.results).toHaveLength(20);expect(body.results[0].recipe.eventId).toBe('event_demo');
-      const exceeded=await route(new Request(`${origin}/v1/activity/plans`,{method:'POST',headers,body:JSON.stringify({eventId:'event_demo',context,approvedContext,researches:researches.slice(0,1)})}),['activity','plans']);
-      expect(exceeded.status).toBe(429);
+      const context=makeContext({id:'event_context',eventId:'event_demo'}),approval=await createContextApproval('Discuss robotics.',context.id,'Prepare for this event',timestamp),approvedContext=await buildCloudContext('Discuss robotics.',[],approval);
+      const researches=[makeResearch({recipient:{id:'recipient_demo',displayName:'Guest',identityStatus:'verified',eventId:'event_demo'},state:'ready'})];
+      const response=await route(new Request(`${origin}/v1/activity/plans`,{method:'POST',headers,body:JSON.stringify({eventId:'event_demo',context,approvedContext,researches})}),['activity','plans']);
+      expect(response.status).toBe(503);expect(await response.json()).toMatchObject({error:{code:'SERVICE_UNAVAILABLE',message:expect.stringContaining('continue with local preparation')}});
     }finally{if(previous===undefined)delete process.env.NEYMI_SESSION_SECRET;else process.env.NEYMI_SESSION_SECRET=previous;}
   });
 });

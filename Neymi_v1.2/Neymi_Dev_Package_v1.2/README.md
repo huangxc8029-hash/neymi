@@ -1,6 +1,8 @@
 # Neymi · Product & Engineering v1.3
 版本 1.3.0 · 2026-10-25 · 状态：本地应用与自动化流程已实现；真实服务和发布验收仍有门槛。
 
+2026-10-26：免费完整名片与全局助手阶段已实现。助手会话只保存在当前页面内存，单人、活动、亮点入口连接到既有流程。自动化验收记录见 [A/B 阶段验证](docs/verification/card-and-assistant-2026-10-26.md)；真实 provider、手机实机、账号与支付仍未验收/未实现。
+
 ## 本次变更
 从 v1.2 的“整场活动研究优先”调整为 **A 单人定制 → B 整场活动准备 → C 正式聊天渠道**。先免注册用上基础名片，再体验 AI 针对具体接收人提炼本人的真实特点。AI 个性化准备是核心增值价值，高级视觉是独立增值方向。
 
@@ -11,6 +13,7 @@
 - 决策：[风险与决策](docs/08_DECISIONS_AND_RISKS.md)、[变更映射](docs/09_V1_3_CHANGELOG.md)。
 - 工作规范：[AGENTS.md](AGENTS.md)、[首次开发提示](docs/CODEX_FIRST_PROMPT.md)、当前 harness/build 任务卡。
 - 产品讨论依据：[设计文档](docs/superpowers/specs/2026-10-24-neymi-personalized-card-design.md)。
+- 商业线草案：[账户、登录与付费权益设计](docs/superpowers/specs/2026-10-26-account-and-billing-design.md)（大陆与海外；待确认，未实现）。
 
 ## 当前实际状态
 可在本地运行名片创建、加密联系方式、逐字段分享、单人准备、活动准备与接收回赠。AI 使用 DeepSeek，公开研究使用 Tavily；适配器已接入，但当前没有 Neymi 服务密钥。未配置时 AI 对话不可用，方案只给出标明身份的规则草案。自动化测试通过不等于真实服务、真机或试点验收通过。最新结果见 [修复后的验收记录](docs/verification/product-recovery-2026-10-25.md)。原型只作视觉参考。

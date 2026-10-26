@@ -3,6 +3,7 @@ import {ServiceWorkerRegister} from '../modules/pwa/register';
 import {AssistantProvider} from '../modules/assistant/provider';
 import './globals.css';
 import '../modules/card/styles.css';
+import '../modules/card/identity-card.css';
 
 export const metadata: Metadata = {
   title: 'Neymi — 为每次相遇，准备好的你',
