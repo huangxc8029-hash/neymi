@@ -7,6 +7,7 @@ import {createVault} from '../../modules/vault/vault';
 import {buildCloudContext,cloudContextText,createContextApproval,detectSensitiveText,LocalFactsStore} from '../../modules/self/facts';
 import {extractActivityPdf,prepareEvent,runActivityBatch,stageAndTopicGroups,validateActivityText,type ActivityCandidate,type ActivityOutcome,type ActivityPreparation} from '../../modules/activity/service';
 import {StrategyPanel} from '../../modules/strategy/panel';
+import {useAssistant} from '../../modules/assistant/provider';
 
 const key='neymi:activity-preparation:v1';
 const emptyProfile:LocalProfile={schemaVersion:1,id:'guest_profile',revision:1,identity:{},modules:[],facts:[],assets:[]};
@@ -15,11 +16,13 @@ type Stored=ActivityPreparation&{drafts:Record<string,string>;followUps:Record<s
 const empty:Stored={schemaVersion:1,id:'',name:'',goal:'',source:{kind:'text',title:'',excerpt:'',accessedAt:''},candidates:[],drafts:{},followUps:{},aiPlans:{},planErrors:{},planFingerprints:{},batchFingerprint:'',aiContext:'',selectedFactIds:[]};
 
 export default function ActivityPage(){
+  const {intent,appendMessage}=useAssistant();
   const [vault]=useState(()=>createVault(new IndexedDbVaultStorage())),[factsStore]=useState(()=>new LocalFactsStore(vault));
   const [facts,setFacts]=useState<ConfirmedSelfFact[]>([]),[profile,setProfile]=useState<LocalProfile>(emptyProfile),[selectedFactIds,setSelectedFactIds]=useState<string[]>([]),[activity,setActivity]=useState<Stored>(empty),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preparing,setPreparing]=useState(false),[aiBusy,setAiBusy]=useState(false),[cloudApproved,setCloudApproved]=useState(false),[aiContext,setAiContext]=useState(''),[sourceText,setSourceText]=useState(''),[url,setUrl]=useState(''),[openPanels,setOpenPanels]=useState<Set<string>>(new Set());
   const batchController=useRef<AbortController|null>(null);
   const [name,setName]=useState(''),[organization,setOrganization]=useState(''),[role,setRole]=useState(''),[description,setDescription]=useState(''),[stageFit,setStageFit]=useState<ActivityCandidate['stageFit']>('unknown');
   useEffect(()=>{void factsStore.list().then(setFacts).catch(()=>{});void vault.loadPublicProfile().then(setProfile).catch(()=>{});try{const saved=localStorage.getItem(key);if(saved){const parsed={...empty,...JSON.parse(saved) as Partial<Stored>};window.setTimeout(()=>{setActivity(parsed);setSourceText(parsed.source.excerpt);setAiContext(parsed.aiContext);setSelectedFactIds(parsed.selectedFactIds);},0);}}catch{window.setTimeout(()=>setStatus('无法读取上次的本地活动准备。'),0);}},[factsStore,vault]);
+  useEffect(()=>{if(intent==='event')appendMessage('活动准备已打开。活动资料与嘉宾名单保存在本浏览器；你可以逐位确认身份，再核对授权内容。');},[intent,appendMessage]);
   function save(value:Stored){setActivity(value);try{localStorage.setItem(key,JSON.stringify(value));}catch{setStatus('浏览器空间不足；当前内容还在本页，请导出或减少资料后重试。');}}
   async function loadUrl(){setBusy(true);setStatus('正在安全读取公开活动网页…');try{const response=await fetch('/v1/activity/source',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})});const result=await response.json();if(!response.ok)throw new Error(result.error?.message??'网页读取失败。');setSourceText(result.text);save({...activity,source:{kind:'public_url',title:result.title,url:result.url,excerpt:result.text,accessedAt:result.accessedAt},drafts:{}});setStatus('网页文字已读取并保存在本地；服务端不保存抓取结果。');}catch(error){setStatus(error instanceof Error?error.message:'网页读取失败。');}finally{setBusy(false);}}
   async function loadPdf(file:File|undefined){if(!file)return;setBusy(true);setStatus('PDF 在此浏览器内提取文字…');try{if(file.size>10*1024*1024)throw new Error('PDF 最大 10 MiB。');const text=await extractActivityPdf(new Uint8Array(await file.arrayBuffer()));setSourceText(text);save({...activity,source:{kind:'pdf',title:file.name,excerpt:text,accessedAt:new Date().toISOString()},drafts:{}});setStatus('PDF 文字已在本地提取；原文件不会上传。');}catch(error){setStatus(error instanceof Error?error.message:'PDF 无法读取。');}finally{setBusy(false);}}
@@ -32,7 +35,7 @@ export default function ActivityPage(){
     const prepared=prepareEvent({schemaVersion:1,id:activity.id||`event_${crypto.randomUUID().replaceAll('-','')}`,name:activity.name.trim(),goal:activity.goal,source,candidates:activity.candidates});
     const candidates=prepared.candidates;
     // The source and recipient data remain local; only explicit URL retrieval sends a URL to the app server.
-    save({...prepared,candidates,drafts:activity.drafts,followUps:activity.followUps,aiPlans:activity.aiPlans,planErrors:activity.planErrors,planFingerprints:activity.planFingerprints,batchFingerprint:activity.batchFingerprint,aiContext,selectedFactIds});setStatus('活动与来源已保存在此浏览器。');
+    save({...prepared,candidates,drafts:activity.drafts,followUps:activity.followUps,aiPlans:activity.aiPlans,planErrors:activity.planErrors,planFingerprints:activity.planFingerprints,batchFingerprint:activity.batchFingerprint,aiContext,selectedFactIds});setStatus('活动与来源已保存在此浏览器。');if(intent==='event')appendMessage('活动资料已保存在本浏览器。下一步可确认嘉宾身份、阶段匹配和本次发送内容。');
   }catch(error){setStatus(error instanceof Error?error.message:'活动资料不完整。');}}
   function fingerprint(){return JSON.stringify({name:activity.name,goal:activity.goal,source:activity.source,candidates:activity.candidates.map(({id,displayName,organization,role,description,stageFit})=>({id,displayName,organization,role,description,stageFit})),facts:facts.map(fact=>fact.text),selectedFactIds,aiContext});}
   function planFingerprint(candidate:ActivityCandidate,contextText=aiContext.trim(),factValues=facts.filter(fact=>selectedFactIds.includes(fact.id)).map(fact=>fact.text)){
@@ -74,8 +77,8 @@ export default function ActivityPage(){
         for(const item of result.results as Array<{candidateId:string;state:string;strategy?:ConnectionStrategy;recipe?:CardRecipe;error?:string}>){const candidate=pending.find(value=>value.id===item.candidateId);if(candidate&&item.strategy&&item.recipe){aiPlans[item.candidateId]={strategy:item.strategy,recipe:item.recipe};planFingerprints[item.candidateId]=planFingerprint(candidate,approvedContext.text,selectedValues);delete planErrors[item.candidateId];}else if(candidate&&item.state==='failed')planErrors[item.candidateId]=item.error??'此人方案生成失败，可单独重试。';}
         const failed=(result.results as Array<{state:string}>).filter(item=>item.state==='failed').length;
         const prepared=eligible.filter(candidate=>planFingerprints[candidate.id]===planFingerprint(candidate,approvedContext.text,selectedValues)).length;
-        save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setCloudApproved(false);setStatus(`已准备 ${prepared} 位方案；失败 ${failed} 位。结果只保存在此浏览器。`);
-      }else{save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setStatus(eligible.length?'已复用本地方案；未再次发送云端请求。':'所有嘉宾都标记为阶段不匹配；没有发送云端请求。');}
+        save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setCloudApproved(false);setStatus(`已准备 ${prepared} 位方案；失败 ${failed} 位。结果只保存在此浏览器。`);if(intent==='event')appendMessage(`活动方案已完成：${prepared} 位可审阅，${failed} 位失败。结果只保存在本浏览器；请在活动页逐位核对依据。`);
+      }else{save({...activity,aiPlans,planErrors,planFingerprints,batchFingerprint:currentFingerprint});setStatus(eligible.length?'已复用本地方案；未再次发送云端请求。':'所有嘉宾都标记为阶段不匹配；没有发送云端请求。');if(intent==='event')appendMessage('活动页已复用本地方案，没有重复发送云端请求。');}
     }catch(error){setStatus(controller.signal.aborted?'批量 AI 方案已取消。':error instanceof Error?error.message:'多人方案生成失败。');}finally{batchController.current=null;setAiBusy(false);}
   }
   const groups=stageAndTopicGroups(activity.candidates,facts.map(fact=>fact.text));
@@ -93,7 +96,7 @@ export default function ActivityPage(){
     {activity.planErrors[candidate.id]&&!planIsCurrent&&<p role="alert">{activity.planErrors[candidate.id]} {cloudApproved&&candidate.identityConfirmed&&<button type="button" disabled={aiBusy} onClick={()=>void createAiPlans(candidate.id)}>重试此人方案</button>}</p>}
     {plan&&planIsCurrent&&<section><h4>AI 表达方案</h4><p>{plan.strategy.recommendation==='verify_first'?'先核实双方需求':plan.strategy.recommendation==='no_outreach_recommended'?'不建议当前联系':'建议准备介绍'}</p><p>建议重点：{plan.strategy.recommendedFocus}</p><p>{plan.recipe.headlineDraft}</p><p>{plan.recipe.introDraft}</p><ul>{plan.strategy.uncertainties.map((item,index)=><li key={index}>{item}</li>)}</ul>
       <button type="button" onClick={()=>setOpenPanels(current=>{const next=new Set(current);if(next.has(candidate.id))next.delete(candidate.id);else next.add(candidate.id);return next;})}>{openPanels.has(candidate.id)?'收起本地合成审阅':'审阅并本地合成名片'}</button>
-      {openPanels.has(candidate.id)&&<StrategyPanel key={`${candidate.id}-${activity.planFingerprints[candidate.id]}`} research={candidateResearch(candidate)} context={activityContext()} facts={facts} profile={profile} deviceId="device_local" vault={vault} initialPlan={plan}/>}</section>}
+      {openPanels.has(candidate.id)&&<StrategyPanel key={`${candidate.id}-${activity.planFingerprints[candidate.id]}`} research={candidateResearch(candidate)} context={activityContext()} facts={facts} profile={profile} deviceId="device_local" vault={vault} initialPlan={plan} onAssistantUpdate={message=>{if(intent==='event')appendMessage(message);}}/>}</section>}
   </article>;}
   const selectedFacts=facts.filter(fact=>selectedFactIds.includes(fact.id)),eligibleForAi=activity.candidates.filter(candidate=>candidate.stageFit!=='mismatch');
   const cloudPreview=JSON.stringify({purpose:'为本活动逐位拟定表达方案',event:{name:activity.name,goal:activity.goal},selectedSelfText:aiContext.trim(),selectedConfirmedFacts:selectedFacts.map(fact=>fact.text),recipients:eligibleForAi.map(({displayName,organization,role,description})=>({displayName,organization,role,description}))},null,2);

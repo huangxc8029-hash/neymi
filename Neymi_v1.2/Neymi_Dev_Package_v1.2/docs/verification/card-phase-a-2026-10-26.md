@@ -1,0 +1,25 @@
+# Phase A execution ledger
+
+Plan: docs/superpowers/plans/2026-10-26-card-and-global-assistant.md (tasks 1–3 only).
+
+- Ruling: Work in the existing codex/phase-a-foundation checkout; the plan explicitly requests sequential implementation in this session and the tracked tree is clean. Preserve untracked plan/spec and local probes. No deployment or push.
+- Pre-flight: tasks 1/2 share the editor and public profile; contacts remain in their own in-memory form and encrypted vault. Tasks 2/3 share module items; preserve all existing IDs and items when editing, with limits applied only to additions.
+- Ruling: Use this durable verification ledger instead of POSIX-only skill helper scripts on Windows. Keep it as delivery evidence.
+
+## Task 1
+In progress: visible contact inputs, memory-only initial draft, explicit encryption setup/cancel, locked-value protection and separate save feedback.
+
+Task 1: complete. RED: new first-visit browser test failed because contact inputs were absent. GREEN: 14 contact/vault unit tests, 17 card browser tests; extended locked-save/wrong-password/partial-save scenario also passed. Typecheck passed. Ruling: basic and encrypted saves remain explicitly separate to avoid implying an unsaved contact draft was persisted. Browser tests use existing playwright.visual.config.ts (3272) because sandbox sockets block the default local server.
+Correction: extended task 1 browser scenario initially failed due to an ambiguous display-name locator (textbox and sharing checkbox); corrected to the exact textbox. The earlier completion line was premature for this extension; rerun pending.
+
+Task 1 extension: GREEN; locked ordinary save, wrong password, retained contacts and partial-save message verified.
+Task 2: complete. RED: missing module-catalog import and absent Story directory; GREEN: 2 unit tests (add-only quota and legacy multi-item backup restore), 17 existing browser cases plus new directory case. The new browser case found a label nesting bug after reload; separate label/textarea fixed it. Ruling: generic legacy modules consume the content slot and may explicitly switch to Story/Project; extra content is editable, never deleted. Task 3 will supply structured external record fields.
+
+Task 3: complete. RED: new link tests exposed vCard URLs serialized as NOTE and unsafe import URLs accepted; browser case exposed missing social fields/URL action. GREEN: URL unit matrix, 40 targeted unit tests, 21 card+exchange browser tests, full unit suite 153 passed/2 skipped; typecheck and lint passed. Schema normalizes selected link fields before serialization and rejects invalid public import values; account and URL selection remain independent. User action required to open external links. Existing browser runner used alternate configuration to avoid conflicting occupied default port. A remains the delivered scope; tasks 4–7 not started.
+
+## Phase B
+Task 4: complete. RED: assistant prompt module/UI absent; browser tests confirmed missing prompt and modal focus return. GREEN: 2 prompt unit tests and 3 browser cases for 7-second rotation/pause, one cycle, focus return/Escape, route persistence, tab dismissal and protected-route absence. Reduced-motion behavior is implemented as a static launcher. Shared session state remains in memory only; dismissal alone uses sessionStorage.
+
+Task 5: complete. Strategy boundary integration test passed. Shared coach calls existing /v1/session and /v1/coach only after per-message approval; outgoing body uses current text plus explicitly selected confirmed facts, never chat history or contacts. Candidate facts are saved only after individual user action. Prepare route retains manual fact and research/strategy panels. Existing StrategyPanel reports generated strategy and locally composed draft to shared in-memory assistant; ActivityPage reports event progress/results there while retaining its existing localStorage activity store and per-recipient approval.
+
+Task 6: complete. Full record in `docs/verification/card-and-assistant-2026-10-26.md`. Typecheck/lint passed; 156 unit passed/2 skipped; integration boundary passed; formal E2E 32/32 passed with one worker; card visual 3/3 passed; production build succeeded. Desktop/mobile assistant screenshots saved under `screenshots/`. Real providers and real-device browser matrix remain NOT RUN; no deployment or push.

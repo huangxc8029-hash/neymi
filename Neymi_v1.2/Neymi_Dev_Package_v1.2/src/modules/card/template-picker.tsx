@@ -1,6 +1,6 @@
 'use client';
 import type {CardTemplateId} from './templates';
-import {CARD_TEMPLATES,cardTemplateClass} from './templates';
+import {CARD_TEMPLATES,cardTemplateClass,cardThemeStyle} from './templates';
 
 export function TemplatePicker({selected,onSelect}:{selected:CardTemplateId;onSelect:(id:CardTemplateId)=>void}){
   return <section className="template-picker" aria-labelledby="template-picker-title">
@@ -11,7 +11,7 @@ export function TemplatePicker({selected,onSelect}:{selected:CardTemplateId;onSe
     <div className="template-options" role="group" aria-label="免费模板">
       {CARD_TEMPLATES.map(template=><button key={template.id} type="button" className="template-option" aria-label={`使用模板：${template.name}`}
         aria-pressed={selected===template.id} onClick={()=>onSelect(template.id)}>
-        <span className={`template-swatch ${cardTemplateClass(template.id)}`} aria-hidden="true"><span/><i/><b/></span>
+        <span className={`template-swatch identity-swatch ${cardTemplateClass(template.id)}`} style={cardThemeStyle(template.id)} aria-hidden="true"><span/><i/><b/></span>
         <span className="template-option-name">{template.name}</span><span className="template-option-description">{template.description}</span>
       </button>)}
     </div>

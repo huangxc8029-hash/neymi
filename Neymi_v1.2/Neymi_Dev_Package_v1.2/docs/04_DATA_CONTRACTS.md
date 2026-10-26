@@ -1,6 +1,8 @@
 # Domain & Data Contracts v1.3
 以下为实施目标，A01 应实现 TypeScript strict + Zod 等运行时验证。没有现成 schemas/ 或验证脚本，不能引用它们为已完成证据。
 
+2026-10-26 实施补记：全局 AssistantIntent (`person | event | highlight`) 与对话消息仅保存在 React Provider 内存，不写 localStorage/sessionStorage；唯一 sessionStorage 项为用户关闭提示泡泡。单次 coach 请求范围是本轮文本与用户明确选择的已确认本人事实，历史消息不重发。会话不会出现在公开、接收或 handoff 页面。活动草稿按下述活动对象本地存储；现有分享投影仍需单独批准。
+
 ## 1. 通用标识
 所有 ID 为不可猜测 opaque string；ISOTime 为 UTC ISO 时间，UI 按用户时区显示。实体/备份/快照有 schemaVersion。枚举和未知字段严格校验，不把模型数据直接 spread 到实体。
 沿用 v1.2 研究类型字段，新增项与语义如下；完整实现按此契约，不读取 legacy 作为当前接口。

@@ -1,10 +1,11 @@
+import type {CSSProperties} from 'react';
 export const CARD_TEMPLATES=[
-  {id:'evergreen',name:'松林',description:'沉稳商务',start:'#16382f',end:'#214f42',ink:'#f7f4e8',muted:'#d6e6d4',accent:'#d3e888'},
-  {id:'paper',name:'素纸',description:'简洁专业',start:'#f4efe5',end:'#e7dfcf',ink:'#27332f',muted:'#57645c',accent:'#a8563b'},
-  {id:'coast',name:'海岸',description:'开放交流',start:'#123250',end:'#176a8b',ink:'#edf7fa',muted:'#c6e0eb',accent:'#83e1dd'},
-  {id:'clay',name:'陶土',description:'创意表达',start:'#f4d8c2',end:'#d9895d',ink:'#3b291f',muted:'#65493c',accent:'#a84429'},
-  {id:'midnight',name:'夜航',description:'科技质感',start:'#171b2e',end:'#34325a',ink:'#f6f4ff',muted:'#c4c1e3',accent:'#9ff0df'},
-  {id:'lilac',name:'紫藤',description:'温和知性',start:'#eee8f6',end:'#d9c9ec',ink:'#382c48',muted:'#635873',accent:'#7650a7'},
+  {id:'paper',name:'极简白',description:'纯白 · 银灰',start:'#ffffff',end:'#edf0f3',ink:'#17191d',muted:'#51565e',accent:'#444b56',image:''},
+  {id:'midnight',name:'航天黑',description:'曜黑 · 冷银',start:'#090b0e',end:'#181c22',ink:'#f7f8fa',muted:'#c0c6ce',accent:'#d3dbe5',image:''},
+  {id:'evergreen',name:'松林',description:'深绿 · 林间雾',start:'#071e19',end:'#153a2e',ink:'#f2f7ee',muted:'#c5d9cc',accent:'#d6e7b9',image:'/card-backgrounds/forest.png'},
+  {id:'coast',name:'大海',description:'深蓝 · 浪潮',start:'#061b35',end:'#123e62',ink:'#f0f7ff',muted:'#bed8ef',accent:'#b9eaf7',image:'/card-backgrounds/ocean.png'},
+  {id:'clay',name:'樱花',description:'淡粉 · 春日',start:'#fff3f5',end:'#f5dbe3',ink:'#4a2638',muted:'#755165',accent:'#944665',image:'/card-backgrounds/sakura.png'},
+  {id:'lilac',name:'紫罗兰',description:'深紫 · 花影',start:'#23132f',end:'#49335d',ink:'#faf2ff',muted:'#dfc9ed',accent:'#e5c9ff',image:'/card-backgrounds/violet.png'},
 ] as const;
 
 export type CardTemplateId=typeof CARD_TEMPLATES[number]['id'];
@@ -26,4 +27,13 @@ export function getCardTemplate(value:string|undefined|null){
 
 export function cardTemplateClass(value:string|undefined|null){
   return `template-${resolveCardTemplateId(value)}`;
+}
+
+export function cardThemeStyle(value:string|undefined|null):CSSProperties{
+  const t=getCardTemplate(value);
+  const surface=t.id==='midnight'
+    ?'radial-gradient(circle at 78% 25%,#d5dbe8 0 1px,transparent 1.4px),radial-gradient(circle at 91% 65%,#aeb9cf 0 1px,transparent 1.5px),radial-gradient(circle at 68% 82%,#f4f6fa 0 1px,transparent 1.4px),linear-gradient(135deg,#080a0d,#11151b 55%,#1a1e24)'
+    :t.image?`url("${t.image}")`:`linear-gradient(125deg,${t.start} 45%,${t.end})`;
+  return {'--template-ink':t.ink,'--template-muted':t.muted,'--template-accent':t.accent,
+    '--card-surface':t.start,backgroundImage:surface} as CSSProperties;
 }

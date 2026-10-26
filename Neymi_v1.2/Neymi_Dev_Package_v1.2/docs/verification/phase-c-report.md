@@ -1,6 +1,6 @@
 # Phase C verification
 
-**Date:** 2026-10-25  
+**Date:** 2026-10-26
 **Scope:** Signed messaging webhook boundary, one-time handoff for published cards, and in-app-browser recovery guidance.
 
 ## Implemented
@@ -14,15 +14,20 @@
 
 | Check | Result |
 | --- | --- |
+| Focused messaging unit + integration tests | Passed; 2 files, 7 tests |
 | `npm run typecheck` | Passed |
 | `npm run lint` | Passed |
-| `npm test` | 17 files passed, 1 skipped; 130 tests passed, 2 skipped |
-| `npm run test:e2e` | 17 Chromium browser tests passed, including both messaging handoff/recovery cases |
-| `npm run build` | Passed; `/handoff` and messaging API routes included |
-| `git diff --check` | Passed |
+| Full `npm test -- --reporter=dot` | Passed; 23 files, 157 tests passed, 2 skipped |
+| Messaging Playwright acceptance | Not re-verified in this run: Playwright did not reach test discovery/output after starting its web server, so the process was stopped. The prior 2026-10-25 run recorded 17 Chromium tests passing, including messaging cases. |
+| `NEYMI_NEXT_DIST_DIR=.next-c-verify npm run build` | Passed; `/handoff` and messaging API routes included. Default `.next-neymi` output hit `EPERM` while another local artifact was present, so build was rerun with an isolated output directory. |
+| `git diff --check` | No whitespace errors; pre-existing card-phase files report extra blank lines at EOF. |
 
 ## Formal C gate status
 
 The local protocol, UI path, and tests are implemented. **G-C remains BLOCKED**: no official channel has been selected or approved, and provider credentials, pricing/admission and retention review, live callback integration, provider-specific finite retry policy, and real-device WebView pilot are unavailable here. G-A3 and G-B also retain their documented live-service and user-pilot gates. The fixture adapter is not production integration.
 
 The webhook rate limiter is process-local, so production multi-instance deployments require shared state. Handoff references only public cards; it does not transfer a private strategy or access the device vault. Automated outbound messages remain out of scope.
+
+## Current run notes
+
+The C implementation is complete at the local code and fixture-adapter level. Current unit, type, lint, and isolated production-build checks pass. Browser acceptance could not be freshly confirmed because the local Playwright runner stalled before reporting tests; use the 2026-10-25 browser result as historical evidence only. The formal G-C production gate remains blocked on the external prerequisites above.

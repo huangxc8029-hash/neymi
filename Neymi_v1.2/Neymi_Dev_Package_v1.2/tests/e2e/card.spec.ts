@@ -1,6 +1,22 @@
 import {expect,test} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 
+test('contacts are visible in the basic form and cancelling encryption never persists the draft',async({page})=>{
+  await page.goto('/');
+  const form=page.getByRole('region',{name:'创建你的名片'});
+  for(const label of ['邮箱','电话','微信','WhatsApp'])await expect(form.getByLabel(label,{exact:true})).toBeVisible();
+  await form.getByLabel('展示名称').fill('Memory only');
+  await form.getByLabel('电话',{exact:true}).fill('+1 415 555 0111');
+  await form.getByRole('button',{name:'加密保存联系方式'}).click();
+  await expect(form.getByLabel('为敏感资料设置本地口令')).toBeVisible();
+  await form.getByRole('button',{name:'取消密码设置'}).click();
+  await form.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.reload();
+  await expect(page.getByLabel('电话',{exact:true})).toHaveValue('');
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+});
+
 test('first visit shows a visual card example, contact channels and an AI assistant path',async({page})=>{
   await page.goto('/');
   await expect(page.getByRole('region',{name:'示例名片'})).toBeVisible();
@@ -8,7 +24,7 @@ test('first visit shows a visual card example, contact channels and an AI assist
   await expect(page.getByRole('group',{name:'联系方式示意'})).toContainText('电话');
   await expect(page.getByRole('group',{name:'联系方式示意'})).toContainText('微信');
   await expect(page.getByRole('group',{name:'联系方式示意'})).toContainText('WhatsApp');
-  await expect(page.getByRole('link',{name:'开始 AI 个性化准备'})).toHaveAttribute('href','/prepare');
+  await expect(page.getByRole('button',{name:'打开全局 AI 助手'})).toBeVisible();
 });
 
 test('six free templates work without registration and carry through preview and sharing',async({page})=>{
@@ -17,7 +33,7 @@ test('six free templates work without registration and carry through preview and
   await expect(templates.getByRole('button')).toHaveCount(6);
   await expect(page.locator('.template-picker-heading')).toContainText('6 款免费');
   await expect(page.locator('.template-picker-heading')).toContainText('免注册');
-  await templates.getByRole('button',{name:'使用模板：海岸'}).click();
+  await templates.getByRole('button',{name:'使用模板：大海'}).click();
   await page.getByLabel('展示名称').fill('Lin Template');
   const card=page.getByRole('region',{name:'我的名片'});
   await expect(card).toHaveClass(/template-coast/);
@@ -133,20 +149,23 @@ test('image export is PNG and vCard is separately confirmed',async({page})=>{
 
 test('AI preparation stays optional and blocks contact details before cloud consent',async({page})=>{
   await page.goto('/');
-  await page.getByRole('link',{name:'AI 助手'}).click();
-  await expect(page.getByRole('heading',{name:'先整理你想让人记住的特点。'})).toBeVisible();
-  const intro=page.getByLabel('介绍你做过什么、擅长什么，或回答上一个问题');
+  await page.getByRole('button',{name:'打开全局 AI 助手'}).click();
+  await page.getByRole('button',{name:/一起找亮点/}).click();
+  const intro=page.getByLabel('告诉助手你的经历或目标');
   await intro.fill('I built a demo. Contact me at demo@example.org');
-  await expect(page.getByText('检测到联系方式或地址。请先移除再发送。检测不是完整的隐私保护。')).toBeVisible();
-  await expect(page.getByRole('button',{name:'同意发送当前文字，请 AI 继续提问'})).toBeDisabled();
+  await expect(page.getByText('检测到联系方式或地址，请移除后再发送。')).toBeVisible();
+  await expect(page.getByRole('button',{name:'同意发送当前内容'})).toBeDisabled();
   await intro.fill('I built a warehouse robotics demo.');
-  await expect(page.getByRole('button',{name:'同意发送当前文字，请 AI 继续提问'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'同意发送当前内容'})).toBeDisabled();
+  await page.getByLabel('我已核对本次发送内容').check();
+  await expect(page.getByRole('button',{name:'同意发送当前内容'})).toBeEnabled();
 });
 
 test('guest encrypts contact methods and shares only the chosen one',async({page})=>{
   await page.goto('/');
   await page.getByLabel('展示名称').fill('Lin Contact');
-  await page.getByRole('button',{name:'填写联系方式'}).click();
+  await page.getByLabel('邮箱',{exact:true}).fill('lin@example.org');
+  await page.getByRole('button',{name:'加密保存联系方式'}).click();
   await page.getByLabel('为敏感资料设置本地口令').fill('correct horse battery');
   await page.getByRole('button',{name:'创建加密区'}).click();
   await page.getByLabel('邮箱').fill('lin@example.org');
@@ -156,7 +175,7 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   await page.getByRole('button',{name:'加密保存联系方式'}).click();
   await page.getByRole('button',{name:'保存并更新预览'}).click();
   const card=page.getByRole('region',{name:'我的名片'});
-  await card.getByRole('button',{name:'联系方式'}).click();
+  await expect(card.getByLabel('卡面联系方式').getByRole('button',{name:'复制 邮箱'})).toBeVisible();
   await expect(card).toContainText('lin@example.org');
   await page.getByRole('checkbox',{name:/联系方式 · 邮箱/}).check();
   await page.getByRole('button',{name:'生成分享预览'}).click();
@@ -170,10 +189,25 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   expect(text).not.toContain('+1 415 555 0100');expect(text).not.toContain('lin_wechat');expect(text).not.toContain('+44 7700 900123');
   await page.reload();
   await expect(page.getByRole('textbox',{name:'展示名称'})).toHaveValue('Lin Contact');
-  await expect(page.getByLabel('邮箱')).toHaveCount(0);
+  await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
+  await page.getByRole('textbox',{name:'展示名称',exact:true}).fill('Renamed while locked');
+  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.getByRole('button',{name:'解锁联系方式'}).click();
+  await page.getByLabel('解锁本地敏感资料').fill('wrong password');
+  await page.getByRole('button',{name:'解锁',exact:true}).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
+  await page.getByLabel('解锁本地敏感资料').fill('correct horse battery');
+  await page.getByRole('button',{name:'解锁',exact:true}).click();
+  await expect(page.getByLabel('邮箱',{exact:true})).toHaveValue('lin@example.org');
+  await expect(page.getByLabel('微信',{exact:true})).toHaveValue('lin_wechat');
+  await page.getByLabel('邮箱',{exact:true}).fill('bad-email');
+  await page.getByRole('button',{name:'加密保存联系方式'}).click();
+  await expect(page.locator('.contact-panel [role="status"]')).toContainText('基础信息已保存；联系方式未保存');
 });
 
-test('assistant asks follow-up without retransmitting earlier turns',async({page})=>{
+test('direct prepare entry uses the shared assistant without retransmitting earlier turns',async({page})=>{
   const sent:string[]=[];
   await page.route('**/v1/session',route=>route.fulfill({status:201,json:{expiresAt:'2026-10-26T00:00:00.000Z'}}));
   await page.route('**/v1/coach',async route=>{
@@ -181,14 +215,34 @@ test('assistant asks follow-up without retransmitting earlier turns',async({page
     await route.fulfill({status:200,json:{reply:'你希望和哪类人交流？',facts:sent.length===1?[{id:'fact_e2e_coach',text:'设计过物流工具',category:'experience',origin:'ai_extracted'}]:[]}});
   });
   await page.goto('/prepare');
-  const intro=page.getByLabel('介绍你做过什么、擅长什么，或回答上一个问题');
+  await page.getByRole('button',{name:'打开全局 AI 助手'}).click();
+  await page.getByRole('button',{name:/为一个人准备/}).click();
+  const intro=page.getByLabel('告诉助手你的经历或目标');
   await intro.fill('我设计过物流工具。');
-  await page.getByRole('button',{name:'同意发送当前文字，请 AI 继续提问'}).click();
+  await page.locator('.global-assistant-panel summary').filter({hasText:'核对本次实际发送内容'}).click();
+  await page.getByLabel('我已核对本次发送内容').check();
+  await page.getByRole('button',{name:'同意发送当前内容'}).click();
   await expect(page.getByText('你希望和哪类人交流？')).toBeVisible();
   await page.getByRole('button',{name:'确认并保存到本地'}).click();
-  await expect(page.getByText('设计过物流工具',{exact:true})).toBeVisible();
   await intro.fill('我希望认识供应链负责人。');
-  await page.getByRole('button',{name:'同意发送当前文字，请 AI 继续提问'}).click();
+  await page.getByLabel('我已核对本次发送内容').check();
+  await page.getByRole('button',{name:'同意发送当前内容'}).click();
   await expect.poll(()=>sent.length).toBe(2);
   expect(sent).toEqual(['我设计过物流工具。','我希望认识供应链负责人。']);
+});
+
+test('free module slots and keyboard-accessible planned previews never insert examples',async({page})=>{
+  await page.goto('/');await page.getByLabel('展示名称').fill('Module owner');
+  await page.getByText('Story · 我的故事 免费',{exact:true}).click();
+  await page.getByRole('button',{name:'添加Story · 我的故事',exact:true}).click();
+  await page.getByLabel('亮点',{exact:true}).fill('My real story');
+  await expect(page.getByRole('button',{name:'添加展示模块',exact:true})).toBeDisabled();
+  const planned=page.locator('summary').filter({hasText:'Services · 服务'});
+  await planned.focus();await page.keyboard.press('Enter');
+  await expect(page.getByText('静态示例（不会写入你的名片）：示例：介绍你实际提供的服务、作品或合作条件。请填写真实内容。').first()).toBeVisible();
+  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.reload();
+  await expect(page.getByLabel('亮点',{exact:true})).toHaveValue('My real story');
+  await expect(page.getByRole('region',{name:'我的名片'})).not.toContainText('Services');
 });

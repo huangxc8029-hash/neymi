@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {isCardLinkItem,normalizeCardUrl} from '../modules/card/links';
 
 const id = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const shortText = z.string().trim().min(1).max(1000);
@@ -63,7 +64,13 @@ export const consentGrantSchema = z.strictObject({grantId:id,profileId:id,device
   allowedAssetIds:z.array(id),createdAt:isoTime,expiresAt:isoTime,revokedAt:isoTime.optional()})
   .refine(grant => Date.parse(grant.expiresAt)>Date.parse(grant.createdAt),'Invalid grant interval');
 const publicItem = z.strictObject({label:shortText,value:text});
-const publicModule = z.strictObject({kind:shortText,title:shortText,items:z.array(publicItem)});
+const publicModule = z.strictObject({kind:shortText,title:shortText,items:z.array(publicItem)}).transform((section,ctx)=>({
+  ...section,items:section.items.map(item=>{
+    if(!isCardLinkItem(section.kind,item.label))return item;
+    try{return {...item,value:normalizeCardUrl(item.value)};}
+    catch{issue(ctx,'链接仅支持有效的 http/https 网址，不能包含登录凭据');return item;}
+  })
+}));
 const base64 = z.string().max(7_000_000).regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
 export const shareProjectionSchema = z.strictObject({schemaVersion:z.literal(1),format:z.literal('ncard-public-share'),
   identity,modules:z.array(publicModule),assets:z.array(z.strictObject({mime,base64})),templateId:id,layout,animation,publicDedication:shortText.optional()});

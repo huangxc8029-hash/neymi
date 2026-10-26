@@ -1,6 +1,8 @@
 # QA & Evaluation v1.3
 所有测试为待实施验收。实际结果写入 docs/verification/，记录 commit、命令、fixture、日期、PASS/FAIL/BLOCKED/NOT RUN。禁止仅因代码存在写 PASS。
 
+2026-10-26 阶段 A/B 执行结果已记录于 [card-and-assistant-2026-10-26.md](verification/card-and-assistant-2026-10-26.md)：unit、typecheck、lint、build 和正式浏览器矩阵通过；真实 provider、手机/Safari/微信实机及商业系统未运行。mock 结果不得作为实时服务通过证据。
+
 ## A 验收矩阵
 | ID | Given / When | Then | 任务 |
 |---|---|---|---|
