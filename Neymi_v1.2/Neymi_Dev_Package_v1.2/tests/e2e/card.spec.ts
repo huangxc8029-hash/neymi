@@ -188,7 +188,7 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   await page.reload();
   await expect(page.getByRole('textbox',{name:'展示名称'})).toHaveValue('Lin Contact');
   await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
-  await page.getByLabel('展示名称').fill('Renamed while locked');
+  await page.getByRole('textbox',{name:'展示名称',exact:true}).fill('Renamed while locked');
   await page.getByRole('button',{name:'保存并更新预览'}).click();
   await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
   await page.getByRole('button',{name:'解锁联系方式'}).click();
@@ -223,4 +223,20 @@ test('assistant asks follow-up without retransmitting earlier turns',async({page
   await page.getByRole('button',{name:'同意发送当前文字，请 AI 继续提问'}).click();
   await expect.poll(()=>sent.length).toBe(2);
   expect(sent).toEqual(['我设计过物流工具。','我希望认识供应链负责人。']);
+});
+
+test('free module slots and keyboard-accessible planned previews never insert examples',async({page})=>{
+  await page.goto('/');await page.getByLabel('展示名称').fill('Module owner');
+  await page.getByText('Story · 我的故事 免费',{exact:true}).click();
+  await page.getByRole('button',{name:'添加Story · 我的故事',exact:true}).click();
+  await page.getByLabel('亮点',{exact:true}).fill('My real story');
+  await expect(page.getByRole('button',{name:'添加展示模块',exact:true})).toBeDisabled();
+  const planned=page.locator('summary').filter({hasText:'Services · 服务'});
+  await planned.focus();await page.keyboard.press('Enter');
+  await expect(page.getByText('静态示例（不会写入你的名片）：示例：介绍你实际提供的服务、作品或合作条件。请填写真实内容。').first()).toBeVisible();
+  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.reload();
+  await expect(page.getByLabel('亮点',{exact:true})).toHaveValue('My real story');
+  await expect(page.getByRole('region',{name:'我的名片'})).not.toContainText('Services');
 });
