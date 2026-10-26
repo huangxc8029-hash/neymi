@@ -2,6 +2,7 @@ import {shareProjectionSchema} from '../../domain/schemas';
 import type {ShareProjection} from '../../domain/types';
 import {fromBase64} from '../vault/crypto';
 import {getCardTemplate} from '../card/templates';
+import {isCardLinkItem} from '../card/links';
 
 const encode=(value:string)=>new TextEncoder().encode(value);
 const vEscape=(value:string)=>value.replaceAll('\\','\\\\').replace(/\r\n|\r|\n/g,'\\n').replaceAll(';','\\;').replaceAll(',','\\,');
@@ -15,7 +16,7 @@ export function serializeVcard(projection:ShareProjection):Uint8Array{
   if(p.identity.role)lines.push(`TITLE:${vEscape(p.identity.role)}`);
   for(const section of p.modules)for(const item of section.items){
     const label=item.label.toLowerCase();
-    const kind=/email|邮箱|邮件/.test(label)?'EMAIL':/phone|tel|电话|手机/.test(label)?'TEL':'NOTE';
+    const kind=isCardLinkItem(section.kind,item.label)?'URL':section.kind==='social'?'NOTE':/email|邮箱|邮件/.test(label)?'EMAIL':/phone|tel|电话|手机/.test(label)?'TEL':'NOTE';
     lines.push(`${kind}:${vEscape(kind==='NOTE'?`${item.label}: ${item.value}`:item.value)}`);
   }
   if(p.publicDedication)lines.push(`NOTE:${vEscape(p.publicDedication)}`);
