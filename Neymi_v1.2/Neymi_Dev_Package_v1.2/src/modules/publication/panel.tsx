@@ -2,6 +2,7 @@
 import {useState} from 'react';
 import type {ShareProjection} from '../../domain/types';
 import {confirmShare} from '../sharing/confirmation';
+import {publicationRequest} from './request';
 
 type Receipt={publication:{publicId:string;url:string;expiresAt:string};revokeToken:string};
 export function PublicationPanel({projection}:{projection:ShareProjection}){
@@ -10,20 +11,20 @@ export function PublicationPanel({projection}:{projection:ShareProjection}){
     setBusy(true);setStatus('');
     try{
       const idempotencyKey=key||crypto.randomUUID().replaceAll('-','');setKey(idempotencyKey);
-      const session=await fetch('/v1/session',{method:'POST'});if(!session.ok)throw new Error('无法建立匿名会话，请稍后重试。');
+      const session=await publicationRequest('/v1/session',{method:'POST'});if(!session.ok)throw new Error('无法建立匿名会话，请稍后重试。');
       const confirmation=await confirmShare(projection,'publish');
-      const response=await fetch('/v1/publications',{method:'POST',headers:{'content-type':'application/json','idempotency-key':idempotencyKey},body:JSON.stringify({projection,confirmation})});
+      const response=await publicationRequest('/v1/publications',{method:'POST',headers:{'content-type':'application/json','idempotency-key':idempotencyKey},body:JSON.stringify({projection,confirmation})});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'暂时无法发布。');
       setReceipt(body as Receipt);setStatus('公开快照已发布，30 天后到期。撤回令牌只显示给你一次；请复制并妥善保存。');
     }catch(error){setStatus(error instanceof Error?error.message:'暂时无法发布。');}
     finally{setBusy(false);}
   }
   async function revoke(){if(!receipt)return;setBusy(true);setStatus('');
-    try{const response=await fetch(`/v1/publications/${encodeURIComponent(receipt.publication.publicId)}`,{method:'DELETE',headers:{authorization:`Bearer ${receipt.revokeToken}`}});
+    try{const response=await publicationRequest(`/v1/publications/${encodeURIComponent(receipt.publication.publicId)}`,{method:'DELETE',headers:{authorization:`Bearer ${receipt.revokeToken}`}});
       if(!response.ok)throw new Error('撤回失败；请检查撤回令牌或稍后重试。');setReceipt(null);setStatus('公开快照已撤回。');
     }catch(error){setStatus(error instanceof Error?error.message:'撤回失败。');}finally{setBusy(false);}}
   async function createHandoff(){if(!receipt)return;setHandoffBusy(true);setStatus('');
-    try{const response=await fetch('/v1/messaging/handoffs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({publicationId:receipt.publication.publicId})});
+    try{const response=await publicationRequest('/v1/messaging/handoffs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({publicationId:receipt.publication.publicId})});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'无法创建一次性交接链接。');
       setHandoffUrl(body.url);setStatus(`一次性链接已创建，将于 ${new Date(body.expiresAt).toLocaleTimeString()} 到期。`);
     }catch(error){setStatus(error instanceof Error?error.message:'无法创建一次性交接链接。');}finally{setHandoffBusy(false);}}

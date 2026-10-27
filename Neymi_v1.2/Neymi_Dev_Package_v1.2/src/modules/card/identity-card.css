@@ -1,7 +1,7 @@
 /* Shared 5:3 card face: personal identity leads, contacts remain on the face. */
 .cyber-card.identity-card{position:relative;display:block;aspect-ratio:5/3;width:100%;min-height:0;padding:0;border:0;border-radius:16px;container-type:inline-size;isolation:isolate;background-color:var(--card-surface);background-size:cover;background-position:center;box-shadow:0 18px 45px #0004;color:var(--template-ink);overflow:hidden}
 .cyber-card.identity-card:before{content:none}
-.identity-front{position:absolute;inset:0;display:flex;flex-direction:column;align-items:stretch;padding:5% 5.5% 11%;gap:3cqi;background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 7%),color-mix(in srgb,var(--card-surface),transparent 35%) 58%,transparent 90%)}
+.identity-front{position:absolute;inset:0;display:flex;flex-direction:column;align-items:stretch;padding:5% 5.5% 7%;gap:3cqi;background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 7%),color-mix(in srgb,var(--card-surface),transparent 35%) 58%,transparent 90%)}
 .identity-logo-slot{height:8cqi;flex:none;display:flex;align-items:flex-start;max-width:30%}
 .identity-logo{display:block;width:auto;height:auto;max-width:100%;max-height:8cqi;object-fit:contain;object-position:left top}
 .identity-nameblock{width:80%;flex:none;text-align:left}
@@ -19,7 +19,7 @@
 .identity-card .identity-modules button.identity-tile,.studio .identity-card .identity-modules button.identity-tile{display:flex;align-items:center;justify-content:space-between;gap:3cqi;flex:0 0 auto;min-height:30px;min-width:23%;padding:1.5cqi 2cqi;border:1px solid color-mix(in srgb,var(--template-ink),transparent 78%);border-radius:6px;background:color-mix(in srgb,var(--card-surface),transparent 26%);backdrop-filter:blur(8px);box-shadow:none;color:var(--template-ink);animation:none;transform:none;font:inherit}
 .identity-card .identity-tile span{font-size:clamp(10px,1.8cqi,13px);font-weight:500}
 .identity-card .identity-tile svg{width:2cqi;height:2cqi;stroke:currentColor}
-.identity-signature{position:absolute;right:5.5%;bottom:4.2%;display:flex;align-items:baseline;gap:1cqi;color:var(--template-ink);opacity:.48;pointer-events:none;white-space:nowrap}
+.identity-signature{position:absolute;right:5.5%;bottom:1.5%;display:flex;align-items:baseline;gap:1cqi;color:var(--template-ink);opacity:.48;pointer-events:none;white-space:nowrap}
 .identity-signature>span{font-size:clamp(10px,2.15cqi,16px);font-weight:600;letter-spacing:-.03em}
 .identity-signature small{font-size:clamp(6px,1.25cqi,9px);font-weight:400;letter-spacing:.02em}
 .identity-detail{position:absolute;inset:5% 5.5% 13%;z-index:2;display:flex;flex-direction:column;gap:2cqi;padding:3cqi;border:1px solid color-mix(in srgb,var(--template-ink),transparent 80%);border-radius:12px;background:color-mix(in srgb,var(--card-surface),transparent 5%);box-shadow:0 10px 28px #0002;backdrop-filter:blur(20px);animation:detailRise .3s ease-out;overflow:hidden}
@@ -40,3 +40,139 @@
 @media(max-width:560px){.cyber-card.identity-card{border-radius:12px}.identity-front{gap:2.2cqi;padding-bottom:10%}.identity-logo-slot{height:7cqi}.identity-contacts{gap:1.2cqi 2cqi;width:100%}.identity-contact svg{display:none}.identity-contact-label{font-size:9px}.identity-contact-value{font-size:10px}.identity-signature{bottom:3.3%}.identity-card .identity-modules button.identity-tile{min-height:28px;padding:1cqi 2cqi}.identity-nameblock{width:90%}}
 @media(prefers-reduced-motion:reduce){.identity-card *{animation:none!important;transition:none!important}}
 @media(max-width:560px){.identity-front{padding-top:4%;gap:1.2cqi}.identity-logo-slot{height:4.5cqi}.identity-logo{max-height:4.5cqi}.identity-card button.identity-contact,.studio .identity-card button.identity-contact{min-height:24px}.identity-contacts{flex-shrink:0}.identity-nameblock p.identity-role{margin-top:1cqi!important}}
+
+/* One card language across free and VIP: templates change the artwork, not the information architecture. */
+.identity-card.card-language .identity-front{background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 7%),color-mix(in srgb,var(--card-surface),transparent 35%) 58%,transparent 90%)}
+.identity-card.card-language[data-module-shell] .identity-front{padding:5% 5.5% 7%;gap:3cqi}
+.identity-card.card-language[data-module-shell="sticker"] .identity-front{background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 7%),color-mix(in srgb,var(--card-surface),transparent 35%) 58%,transparent 90%)}
+.identity-card.card-language[data-module-shell] .identity-nameblock{width:80%;padding:0;border:0;background:none;text-align:left}
+.identity-card.card-language[data-module-shell] .identity-modules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-self:stretch;align-content:end;width:100%;max-width:none;flex:none;flex-wrap:initial;gap:1.2cqi;margin-top:auto;padding:0;border:0;overflow:visible;scrollbar-width:none}
+.identity-card.card-language[data-module-shell] .identity-tile,.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile{display:flex!important;grid-column:auto!important;grid-row:auto!important;align-items:center;justify-content:center;min-width:0!important;min-height:6cqi!important;padding:1.2cqi!important;border:1px solid color-mix(in srgb,var(--template-ink),transparent 72%)!important;border-radius:8px!important;background:color-mix(in srgb,var(--card-surface),transparent 12%)!important;box-shadow:none!important;color:var(--template-ink)!important;transform:none!important;rotate:none!important;overflow:hidden}
+.identity-card.card-language[data-module-shell] .identity-tile>span:not(.card-social-logos){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.identity-card.card-language[data-module-shell] .identity-tile:nth-child(n){transform:none!important;rotate:none!important}
+.identity-card.card-language[data-module-shell] .identity-tile.identity-more-tile{grid-column:4!important;justify-self:end;min-width:54%!important;background:color-mix(in srgb,var(--card-surface),transparent 2%)!important;color:var(--template-accent)!important;font-size:clamp(9px,1.6cqi,12px);font-weight:700;letter-spacing:.04em}
+.identity-card.card-language[data-module-shell] .card-social-logos{display:flex;align-items:center;justify-content:center;gap:1cqi;max-width:100%;overflow:hidden}
+.identity-card.card-language[data-module-shell] .card-social-logo{display:inline-grid;place-items:center;width:5.6cqi;height:5.6cqi;flex:none;border-radius:50%;background:var(--template-accent);color:var(--card-surface);font-size:2.6cqi;font-weight:800;line-height:1}
+.identity-card.card-language .identity-tile.identity-more-tile{min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:var(--template-ink)!important;font-size:clamp(9px,1.6cqi,12px);font-weight:600;letter-spacing:.02em}
+.identity-card.card-language .card-social-logo{width:auto;height:auto;min-width:0;border:0;border-radius:0;background:none;color:var(--template-ink);font-size:clamp(11px,2.3cqi,17px);font-weight:700}
+.identity-card.card-language[data-module-shell] .identity-tile.identity-logo-tile{min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:var(--template-ink)!important;backdrop-filter:none!important}
+@media(max-width:560px){.identity-card.card-language[data-module-shell] .identity-modules{width:100%;max-width:none}.identity-card.card-language[data-module-shell] .identity-tile{min-height:8cqi!important}.identity-card.card-language[data-module-shell] .identity-front{padding:4% 5.5% 8%;gap:1.8cqi}}
+
+/* Original, CSS-drawn premium series; no remote art or copied character assets. */
+.identity-card[data-card-layout="constellation"] .identity-nameblock{width:68%;padding-left:2.2cqi;border-left:.45cqi solid var(--template-accent)}
+.identity-card[data-card-layout="constellation"] .identity-modules{align-self:flex-end;justify-content:flex-end;width:84%}
+.identity-card[data-card-layout="ribbon"] .identity-front{padding-left:7%;padding-right:7%}
+.identity-card[data-card-layout="ribbon"] .identity-nameblock{width:72%}
+.identity-card[data-card-layout="ribbon"] .identity-modules{width:100%;padding-top:1.3cqi;border-top:1px solid color-mix(in srgb,var(--template-accent),transparent 35%)}
+.identity-card[data-module-shell="mosaic"] .identity-modules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1cqi;width:77%;align-self:flex-end}
+.identity-card[data-module-shell="mosaic"] .identity-tile{min-width:0!important;min-height:5cqi!important;border-radius:2px!important;background:color-mix(in srgb,var(--template-accent),var(--card-surface) 52%)!important}
+.identity-card[data-module-shell="mosaic"] .identity-tile:nth-child(3n+2){transform:translateY(1cqi)}
+.identity-card[data-module-shell="sticker"] .identity-front{background:linear-gradient(100deg,color-mix(in srgb,var(--card-surface),transparent 5%),transparent 75%)}
+.identity-card[data-module-shell="sticker"] .identity-modules{flex-wrap:wrap;max-width:88%;gap:1.2cqi}
+.identity-card[data-module-shell="sticker"] .identity-tile{border:2px solid var(--template-ink)!important;border-radius:999px!important;background:var(--template-accent)!important;color:#251440!important;box-shadow:0 .7cqi 0 #16132955!important}
+.identity-card[data-module-shell="sticker"] .identity-tile:nth-child(3n+1){transform:rotate(-2deg)}
+.identity-card[data-module-shell="sticker"] .identity-tile:nth-child(3n+2){transform:rotate(1.5deg)}
+.identity-card[data-module-shell="panel"]{border:2px solid color-mix(in srgb,var(--template-accent),var(--card-surface) 35%)}
+.identity-card[data-module-shell="panel"] .identity-front{background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 3%),transparent 76%)}
+.identity-card[data-module-shell="panel"] .identity-nameblock{padding:1.5cqi 2cqi;border-left:.35cqi solid var(--template-accent);background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 12%),transparent)}
+.identity-card[data-module-shell="panel"] .identity-tile{border-radius:2px!important;border-left:3px solid var(--template-accent)!important;background:color-mix(in srgb,var(--card-surface),transparent 8%)!important}
+.identity-card.template-mosaic-porcelain:after,.identity-card.template-mosaic-glass:after,.identity-card.template-mosaic-memories:after,.identity-card.template-anime-daily:after,.identity-card.template-anime-adventure:after,.identity-card.template-anime-cel:after{position:absolute;inset:0;z-index:0;pointer-events:none;content:""}
+.identity-card.template-mosaic-porcelain:after{inset:9% 6% auto auto;width:26%;height:35%;background:linear-gradient(135deg,#ffd49a88 0 32%,transparent 32% 36%,#f3eee266 36% 68%,transparent 68% 72%,#4cc9bd66 72%);clip-path:polygon(50% 0,100% 35%,80% 100%,18% 84%,0 20%)}
+.identity-card.template-mosaic-glass:after{inset:0 0 0 auto;width:38%;background:linear-gradient(145deg,#bff7ff55 0 28%,transparent 28% 32%,#b88bd355 32% 62%,transparent 62% 67%,#74e2ce44 67%);clip-path:polygon(45% 0,100% 0,100% 100%,12% 100%,60% 50%)}
+.identity-card.template-mosaic-memories:after{inset:12% 7% auto auto;width:27%;height:28%;border:1px dashed #fff8;box-shadow:8px 7px 0 #f0bb6644,16px 14px 0 #fff2;transform:rotate(5deg)}
+.identity-card.template-anime-daily:after{inset:auto 6% 15% auto;width:27%;height:23%;border:1px solid #fff8;clip-path:polygon(0 0,100% 12%,88% 100%,8% 82%)}
+.identity-card.template-anime-adventure:after{inset:0 0 0 auto;width:33%;background:repeating-linear-gradient(155deg,transparent 0 10%,#ffb44d24 10.5% 11%,transparent 11.5% 20%);clip-path:polygon(38% 0,100% 0,100% 100%,0 100%)}
+.identity-card.template-anime-cel:after{inset:9% 7% auto auto;width:30%;height:27%;border:2px solid #73e2d5a8;box-shadow:8px 8px 0 #d45b7488;transform:rotate(-4deg)}
+@media(max-width:560px){.identity-card[data-module-shell="mosaic"] .identity-modules{width:92%}.identity-card[data-module-shell="sticker"] .identity-modules{max-width:96%}.identity-card[data-card-layout="constellation"] .identity-modules{width:96%}}
+
+/* Six original premium treatments; all text remains live HTML above the artwork. */
+.identity-card.template-pixel-game:after,.identity-card.template-oriental-newwave:after,.identity-card.template-y2k:after,.identity-card.template-street-graffiti:after,.identity-card.template-scrapbook:after,.identity-card.template-cyber-neon:after{position:absolute;z-index:0;pointer-events:none;content:""}
+.identity-card.template-pixel-game:after{inset:9% 6% auto auto;width:25%;height:34%;background:linear-gradient(90deg,transparent 0 26%,#a4f38a 26% 50%,transparent 50% 62%,#f4d76a 62% 88%,transparent 88%),linear-gradient(#a4f38a 0 22%,transparent 22% 45%,#a4f38a 45% 68%,transparent 68%);image-rendering:pixelated;opacity:.56}
+.identity-card.template-oriental-newwave:after{inset:13% 8% auto auto;width:24%;height:47%;border:1px solid #b4332e88;border-radius:50% 46% 48% 52%;box-shadow:inset 0 0 0 8px #b4332e10;transform:rotate(18deg)}
+.identity-card.template-y2k:after{inset:12% 7% auto auto;width:25%;height:25%;border:1px solid #fff9;border-radius:50%;background:linear-gradient(135deg,#fff9,transparent 45%,#7f66e855);box-shadow:inset 0 0 12px #fff8,0 0 22px #9c8bff55}
+.identity-card.template-street-graffiti:after{inset:9% 5% auto auto;width:25%;height:33%;background:repeating-radial-gradient(circle at 20% 25%,#17171677 0 1px,transparent 1.5px 6px);clip-path:polygon(12% 0,100% 12%,82% 100%,0 76%);opacity:.65}
+.identity-card.template-scrapbook:after{inset:12% 8% auto auto;width:23%;height:37%;border:1px solid #71625299;background:linear-gradient(145deg,#fff9 0 12%,transparent 12% 100%);box-shadow:7px 6px 0 #bd735744,14px 12px 0 #594a3633;transform:rotate(4deg)}
+.identity-card.template-cyber-neon:after{inset:0 0 0 auto;width:29%;background:linear-gradient(90deg,transparent,#4ce6df10),repeating-linear-gradient(0deg,transparent 0 20px,#4ce6df28 21px 22px);border-left:1px solid #4ce6df80;box-shadow:-10px 0 28px #4ce6df18}
+.card-opening-skip{position:absolute;top:4%;right:4%;z-index:8;padding:5px 9px;border:1px solid color-mix(in srgb,var(--template-ink),transparent 60%);border-radius:999px;background:color-mix(in srgb,var(--card-surface),transparent 12%);color:var(--template-ink);font:inherit;font-size:clamp(9px,1.35cqi,11px);cursor:pointer}
+.card-opening-skip:focus-visible{outline:2px solid var(--template-accent);outline-offset:2px}
+.identity-card[data-opening-active="true"][data-opening-effect="pixel-wake"] .identity-front{animation:pixelWake 1.35s steps(7,end) both}
+.identity-card[data-opening-active="true"][data-opening-effect="soft-reveal"] .identity-front{animation:softReveal .85s cubic-bezier(.2,.7,.25,1) both}
+.identity-card[data-opening-active="true"][data-opening-effect="ink-unfold"] .identity-front{animation:inkUnfold 1.4s cubic-bezier(.18,.72,.22,1) both}
+.identity-card[data-opening-active="true"][data-opening-effect="poster-tear"] .identity-front{animation:posterTear 1.15s cubic-bezier(.16,.75,.22,1) both}
+.identity-card[data-opening-active="true"][data-opening-effect="paper-stack"] .identity-front{animation:paperStack 1.7s cubic-bezier(.2,.72,.18,1) both}
+.identity-card[data-opening-active="true"][data-opening-effect="chrome-sheen"]:before,.identity-card[data-opening-active="true"][data-opening-effect="light-scan"]:before{position:absolute;inset:-28%;z-index:5;pointer-events:none;content:"";transform:translateX(-130%) rotate(-16deg)}
+.identity-card[data-opening-active="true"][data-opening-effect="chrome-sheen"]:before{background:linear-gradient(90deg,transparent,#fff9 44%,#c9c4ffb8 52%,transparent 68%);animation:chromeSweep 1.25s cubic-bezier(.2,.75,.2,1) both}
+.identity-card[data-opening-active="true"][data-opening-effect="light-scan"]:before{inset:0 auto 0 -25%;width:32%;background:linear-gradient(90deg,transparent,#4ce6dfbb 46%,#d9ffff 51%,transparent 64%);box-shadow:0 0 36px #4ce6df;animation:lightScan 1.3s ease-out both}
+@keyframes pixelWake{from{clip-path:inset(0 100% 0 0 round 16px);filter:brightness(1.8)}to{clip-path:inset(0 0 0 0 round 16px);filter:brightness(1)}}
+@keyframes softReveal{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(5px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes inkUnfold{from{clip-path:inset(0 100% 0 0);transform:translateX(-2%)}to{clip-path:inset(0);transform:translateX(0)}}
+@keyframes chromeSweep{to{transform:translateX(130%) rotate(-16deg)}}
+@keyframes posterTear{from{clip-path:polygon(0 0,0 0,0 100%,0 100%);transform:translateY(2%)}to{clip-path:polygon(0 0,100% 0,100% 100%,0 100%);transform:translateY(0)}}
+@keyframes paperStack{from{opacity:.3;transform:translateY(4%) rotateX(8deg);filter:blur(2px)}to{opacity:1;transform:translateY(0) rotateX(0);filter:blur(0)}}
+@keyframes lightScan{to{transform:translateX(520%) rotate(-16deg)}}
+@media(prefers-reduced-motion:reduce){.card-opening-skip{display:none}.identity-card[data-opening-active="true"] .identity-front,.identity-card[data-opening-active="true"]:before{animation:none!important}}
+.vip-demo-example .identity-card.card-language[data-module-shell] .identity-tile:has(.card-social-logos),.vip-demo-example .identity-card.card-language[data-module-shell] .identity-tile.identity-more-tile{min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:var(--template-ink)!important;backdrop-filter:none!important}
+.vip-demo-example .identity-card.card-language[data-module-shell] .identity-tile.identity-more-tile{grid-column:4!important;width:max-content!important;justify-self:end!important}
+.vip-demo-example .identity-card.card-language[data-module-shell] .card-social-logo{width:auto!important;height:auto!important;min-width:0!important;border:0!important;border-radius:0!important;background:none!important;color:var(--template-ink)!important;font-size:clamp(11px,2.3cqi,17px)!important;font-weight:700!important}
+.vip-demo-example .identity-logo{filter:brightness(0) invert(1)}
+.vip-demo-example .identity-logo-slot{height:6cqi!important}
+.vip-demo-example .identity-logo{max-height:6cqi}
+.vip-demo-example .identity-contacts-static{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2cqi 3cqi;width:91%;margin-top:0;min-height:0;flex:0 0 auto;overflow:visible}
+.vip-demo-example .identity-contact-static{display:flex;min-width:0;flex-direction:column;gap:.35cqi;align-items:flex-start}
+.vip-demo-example .identity-contact-static .identity-contact-label{font-size:clamp(9px,1.65cqi,12px)}
+.vip-demo-example .identity-contact-static .identity-contact-value{max-width:100%;font-size:clamp(10px,2.05cqi,15px);line-height:1.2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.vip-demo-example .identity-card .card-social-logo svg{display:block;width:2.8cqi;height:2.8cqi;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vip-demo-example .identity-card .card-social-logo svg .instagram-dot{fill:currentColor;stroke:none}
+.identity-card .card-social-logo img{display:block;width:2.8cqi;height:2.8cqi;object-fit:contain;filter:var(--card-social-filter,brightness(0) invert(1))}
+.catalog-logo-mark img{display:block;width:100%;height:100%;object-fit:contain}
+.identity-value-heading{display:flex;align-items:center;gap:7px}
+.identity-value-heading>span{font-size:11px;color:var(--template-muted)}
+.catalog-detail-logo{width:25px;height:25px;object-fit:contain;flex:none}
+.identity-detail[data-catalog-kind="social"]>h3,.identity-detail[data-catalog-kind="university"]>h3,.identity-detail[data-catalog-kind="credential"]>h3{display:none}
+.identity-card .identity-detail-scroll .identity-value-heading+.identity-value-content{margin-top:5px}
+.home-demo-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#e9e5dc;font-size:13px;font-weight:700}
+
+/* Shared card-face controls: logos stay unframed and the face itself never needs a scroll rail. */
+.identity-card .identity-tile.identity-logo-tile,.identity-card .identity-tile:has(.card-social-logos){min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:var(--template-ink)!important;backdrop-filter:none!important}
+.identity-card .identity-modules{overflow:visible;scrollbar-width:none}
+.identity-card .identity-contacts,.identity-card .identity-detail-scroll,.identity-card .identity-overflow-modules,.identity-card .card-social-logos{scrollbar-width:none}
+.identity-card .identity-contacts{overflow:visible}
+.identity-card .identity-modules::-webkit-scrollbar,.identity-card .identity-contacts::-webkit-scrollbar,.identity-card .identity-detail-scroll::-webkit-scrollbar,.identity-card .identity-overflow-modules::-webkit-scrollbar,.identity-card .card-social-logos::-webkit-scrollbar{display:none}
+.home-demo-card .identity-card.module-limited .identity-modules{grid-template-columns:max-content repeat(3,min-content);justify-content:start;align-items:center;gap:2cqi;width:max-content;max-width:100%;overflow:visible}
+.home-demo-card .identity-card.module-limited .identity-tile:not(.identity-logo-tile){width:max-content;max-width:100%;min-height:5cqi!important;padding:.8cqi 1.5cqi!important}
+.home-demo-card .identity-card.module-limited .identity-tile.identity-logo-tile{display:grid;place-items:center;width:5.5cqi;height:5.5cqi}
+.home-demo-card .identity-card .card-catalog-tile{justify-content:center}
+.home-demo-card .identity-card .card-catalog-tile img,.home-demo-card .identity-card .card-social-logo img{width:5cqi;height:5cqi;max-width:22px;max-height:22px;object-fit:contain}
+.card-visibility-panel-inline{position:static;display:grid;gap:14px;min-width:0;padding:0;border:0;border-radius:0;background:transparent;color:#262a28;box-shadow:none}
+.card-visibility-panel-inline .card-visibility-heading>span{color:#7c6642}
+.card-visibility-panel-inline .card-visibility-heading h2{color:#262a28;font-size:20px}
+.card-visibility-panel-inline .card-visibility-heading p{color:#5c625e;font-size:12px}
+.card-visibility-panel-inline .card-visibility-options{gap:15px}
+.card-visibility-panel-inline .card-visibility-options section{gap:6px}
+.card-visibility-panel-inline .card-visibility-options h3{color:#6f685d}
+.card-visibility-panel-inline .card-visibility-options label{padding:7px;border-color:#d8ddd5;border-radius:8px;background:#fff;color:#303832}
+.card-visibility-panel-inline .card-visibility-options label:has(input:checked){border-color:#99ad91;background:#eef3eb}
+.card-visibility-panel-inline .card-visibility-options input[type=checkbox]{accent-color:#3c6447}
+.card-visibility-panel-inline .card-visibility-options small,.card-visibility-panel-inline .card-visibility-empty{color:#777f76}
+.card-visibility-panel-inline .card-visibility-module{border-color:#d8ddd5;border-radius:8px;background:#ffffff9c}
+.card-visibility-panel-inline .card-visibility-module>label{border:0;background:transparent}
+.card-visibility-panel-inline .card-visibility-module-fields summary{color:#6a746b}
+@media(max-width:600px){.card-visibility-panel-inline .card-visibility-options section{grid-template-columns:repeat(2,minmax(0,1fr))}.card-visibility-panel-inline .card-visibility-module{grid-column:1/-1}}
+.identity-card.card-language[data-module-shell] .card-social-logos{gap:1.2cqi;overflow:visible}
+
+/* Fix VIP checkbox inheritance from generic form controls. */
+.vip-workflow .workflow-step-light .card-visibility-panel-inline .card-visibility-options input[type=checkbox]{flex:0 0 14px!important;width:14px!important;min-width:14px!important;height:14px!important;min-height:14px!important;margin:0!important;padding:0!important;border:0!important;border-radius:3px!important;background:none!important;box-shadow:none!important;accent-color:#3c6447}
+.vip-workflow .workflow-step-light .card-visibility-panel-inline .card-visibility-options label{display:flex!important;flex-direction:row;align-items:center;min-width:0;overflow:hidden}
+.vip-workflow .workflow-step-light .card-visibility-panel-inline .card-visibility-options label>span{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Brand marks are images without card-tile frames; the text-only story keeps its small outline. */
+.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile.identity-logo-tile,.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile:has(.card-social-logos){min-width:0!important;min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;backdrop-filter:none!important}
+.home-demo-card .identity-card.module-limited .identity-tile:not(.identity-logo-tile){min-height:3.8cqi!important;padding:.5cqi 1cqi!important}
+.home-demo-card .identity-card.module-limited .identity-tile:not(.identity-logo-tile)>span{font-size:clamp(9px,1.25cqi,12px)}
+.identity-card.card-language[data-module-shell] .identity-tile.identity-logo-tile{display:grid!important;place-items:center;width:clamp(20px,5cqi,28px)!important;height:clamp(20px,5cqi,28px)!important}
+.identity-card.card-language[data-module-shell] .card-catalog-tile,.identity-card.card-language[data-module-shell] .card-social-logo{display:grid;place-items:center;width:clamp(20px,5cqi,28px)!important;height:clamp(20px,5cqi,28px)!important}
+.identity-card.card-language[data-module-shell] .card-catalog-tile img,.identity-card.card-language[data-module-shell] .card-social-logo img{display:block;width:clamp(20px,5cqi,28px)!important;height:clamp(20px,5cqi,28px)!important;object-fit:contain}
+
+/* Keep the floating assistant out of the central editor controls. */
+body:has(.vip-workspace) .assistant-float-root{top:auto;bottom:18px;transform:none}
+@media(max-width:760px){body:has(.vip-workspace) .assistant-float-root{bottom:calc(76px + env(safe-area-inset-bottom))}}

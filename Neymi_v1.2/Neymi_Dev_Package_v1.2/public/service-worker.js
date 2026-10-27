@@ -1,6 +1,7 @@
 const CACHE='neymi-shell-v3';
 const SHELL=['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'];
 function cachePolicy(pathname){
+  if(['localhost','127.0.0.1','::1'].includes(self.location.hostname))return'network-only';
   if(/^\/p(?:\/|$)/.test(pathname)||/^\/v1\/publications(?:\/|$)/.test(pathname))return'network-only';
   if(['/','/cards','/receive','/prepare','/offline.html','/manifest.webmanifest'].includes(pathname)||pathname.startsWith('/_next/static/')||pathname.startsWith('/card-backgrounds/'))return'cache-first';
   return'network-only';

@@ -36,3 +36,9 @@ LocalVault.unlock/lock、readAllowed、exportBackup/importBackup；GrantBroker.c
 ## 5. B/C 后续
 B 才增加 POST /v1/events、文件解析和 batch jobs；20 人上限。
 C 才增加 /v1/messaging/:provider/webhook 与单次短期 handoff ticket。只接一个官方渠道，签名/时间/幂等/重试，短 TTL、单次兑换、no-referrer、兑换后清 URL，不给远端 vault 权限。微信/WhatsApp/Telegram 的实际准入与费用届时核验，不宣称已批准；不自动化个人账号。
+
+## 6. Content, voice, and entitlement ports
+
+Browser-side `extractContentFile` parses the allowed local file formats. `TranscriptionProvider.transcribe(bytes, language, {signal})` is a port only; no ASR endpoint or credential is configured. Callers must obtain and bind a fresh approval to the exact outgoing input before calling a remote adapter. The current app keeps recording and transcript drafts in memory and provides manual review.
+
+`EntitlementPort.check` is read-only. `FixtureEntitlementPort` exists for tests and local simulation only; it does not represent a logged-in user or payment. `IdempotentUsageLedger` is an in-memory test boundary, not a production reservation service. No price, checkout, customer, account or payment API has been added. Production entitlement and atomic usage settlement require the separate COM service.

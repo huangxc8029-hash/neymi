@@ -14,7 +14,7 @@ export const runtime='nodejs';
 function PublicCard({projection}:{projection:ShareProjection}){
   const modules=projection.modules.map((section,index)=>({id:`public-${index}`,kind:section.kind,title:section.title,items:section.items.map((item,itemIndex)=>({...item,id:`public-${index}-${itemIndex}`,sensitivity:'ordinary' as const}))}));
   const logo=projection.assets[0];
-  return <div className="public-card-wrap"><CardExperience identity={projection.identity} modules={modules} templateId={projection.templateId} motion={projection.animation} label="公开名片" dedication={projection.publicDedication} publicCard logoSrc={logo?`data:${logo.mime};base64,${logo.base64}`:undefined}/>
+  return <div className="public-card-wrap"><CardExperience identity={projection.identity} modules={modules} templateId={projection.templateId} layout={projection.layout} motion={projection.animation} label="公开名片" dedication={projection.publicDedication} publicCard logoSrc={logo?`data:${logo.mime};base64,${logo.base64}`:undefined}/>
     {projection.assets.slice(1).map((asset,index)=><Image className="public-card-asset" key={index} src={`data:${asset.mime};base64,${asset.base64}`} alt="名片图片" width={640} height={400} unoptimized/>)}</div>;
 }
 

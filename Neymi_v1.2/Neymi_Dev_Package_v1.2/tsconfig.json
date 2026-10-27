@@ -43,7 +43,21 @@
     ".next-visual-v12/types/**/*.ts",
     ".next-visual-v12/dev/types/**/*.ts",
     ".next-card-design/types/**/*.ts",
-    ".next-card-design/dev/types/**/*.ts"
+    ".next-card-design/dev/types/**/*.ts",
+    ".next-local-preview/types/**/*.ts",
+    ".next-local-preview/dev/types/**/*.ts",
+    ".next-redesign-preview/types/**/*.ts",
+    ".next-redesign-preview/dev/types/**/*.ts",
+    ".next-card-final/types/**/*.ts",
+    ".next-card-final/dev/types/**/*.ts",
+    ".next-local-preview/types/**/*.ts",
+    ".next-local-preview/dev/types/**/*.ts",
+    ".next-redesign-preview/types/**/*.ts",
+    ".next-redesign-preview/dev/types/**/*.ts",
+    ".next-live-show/types/**/*.ts",
+    ".next-live-show/dev/types/**/*.ts",
+    ".next-quick-share/types/**/*.ts",
+    ".next-quick-share/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -1,16 +1,20 @@
 import {expect,test} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 
+async function openStep(page:import('@playwright/test').Page,step:'外观'|'分享'){
+  await page.getByRole('navigation',{name:'名片制作步骤'}).getByRole('button',{name:new RegExp(step)}).click();
+}
+
 test('contacts are visible in the basic form and cancelling encryption never persists the draft',async({page})=>{
   await page.goto('/');
-  const form=page.getByRole('region',{name:'创建你的名片'});
+  const form=page.getByRole('region',{name:'制作一张属于你的名片'});
   for(const label of ['邮箱','电话','微信','WhatsApp'])await expect(form.getByLabel(label,{exact:true})).toBeVisible();
   await form.getByLabel('展示名称').fill('Memory only');
   await form.getByLabel('电话',{exact:true}).fill('+1 415 555 0111');
   await form.getByRole('button',{name:'加密保存联系方式'}).click();
   await expect(form.getByLabel('为敏感资料设置本地口令')).toBeVisible();
   await form.getByRole('button',{name:'取消密码设置'}).click();
-  await form.getByRole('button',{name:'保存并更新预览'}).click();
+  await form.getByRole('button',{name:'保存到本机'}).click();
   await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
   await page.reload();
   await expect(page.getByLabel('电话',{exact:true})).toHaveValue('');
@@ -28,17 +32,16 @@ test('first visit shows a visual card example, contact channels and an AI assist
 });
 
 test('six free templates work without registration and carry through preview and sharing',async({page})=>{
-  await page.goto('/');
+  await page.goto('/');await page.getByLabel('展示名称').fill('Lin Template');await openStep(page,'外观');
   const templates=page.getByRole('group',{name:'免费模板'});
   await expect(templates.getByRole('button')).toHaveCount(6);
   await expect(page.locator('.template-picker-heading')).toContainText('6 款免费');
   await expect(page.locator('.template-picker-heading')).toContainText('免注册');
   await templates.getByRole('button',{name:'使用模板：大海'}).click();
-  await page.getByLabel('展示名称').fill('Lin Template');
   const card=page.getByRole('region',{name:'我的名片'});
   await expect(card).toHaveClass(/template-coast/);
-  await page.getByRole('button',{name:'生成分享预览'}).click();
-  await expect(page.locator('.share-confirmation pre')).toContainText('"templateId": "coast"');
+  await openStep(page,'分享');await page.getByRole('button',{name:'生成分享预览'}).click();
+  await expect(page.locator('.share-confirmation .identity-card')).toHaveClass(/template-coast/);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 
@@ -54,7 +57,7 @@ test('v1.2 card uses floating module tiles with in-card detail, copy, and back',
   await page.getByLabel('展示名称').fill('Lin');
   await page.getByRole('button',{name:'添加展示模块'}).click();
   await page.getByLabel('亮点').fill('Built a logistics product');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
   const card=page.getByRole('region',{name:'我的名片'});
   const tile=card.getByRole('button',{name:'我想介绍'});
   await expect(tile).toBeVisible();
@@ -75,8 +78,8 @@ test('composer motion mode is selectable and reduced motion disables tile motion
   await page.getByLabel('展示名称').fill('Lin');
   await page.getByRole('button',{name:'添加展示模块'}).click();
   await page.getByLabel('亮点').fill('A modular story');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
-  await page.getByRole('group',{name:'名片动效'}).getByRole('button',{name:'Orbit Reveal'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();await openStep(page,'外观');
+  await page.getByRole('group',{name:'名片动效'}).getByRole('button',{name:'环绕显现'}).click();
   const card=page.getByRole('region',{name:'我的名片'});
   await expect(card).toHaveClass(/motion-orbit/);
   await expect(card.locator('.card-tile')).toHaveCSS('animation-name','none');
@@ -86,7 +89,7 @@ test('guest creates, previews and reloads a card without registration',async({pa
   await page.goto('/');
   await page.getByLabel('展示名称').fill('Lin');
   await page.getByLabel('公司或团队').fill('Neymi Lab');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
   await expect(page.getByRole('region',{name:'我的名片'})).toContainText('Lin');
   await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
   await page.reload();
@@ -99,7 +102,7 @@ for(const width of [360,390,768,1440]){
     await page.setViewportSize({width,height:900});
     await page.goto('/');
     await page.getByLabel('展示名称').fill('Lin');
-    await page.getByRole('button',{name:'保存并更新预览'}).click();
+    await page.getByRole('button',{name:'保存到本机'}).click();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await expect(page.getByRole('region',{name:'我的名片'})).toBeVisible();
   });
@@ -111,7 +114,7 @@ test('reduced motion removes card animation and details work from the keyboard',
   await page.getByLabel('展示名称').fill('Lin');
   await page.getByRole('button',{name:'添加展示模块'}).click();
   await page.getByLabel('亮点').fill('Warehouse robot');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
   const card=page.getByRole('region',{name:'我的名片'});
   await expect(card).toHaveCSS('animation-name','none');
   await card.getByRole('button',{name:'我想介绍'}).focus();
@@ -124,7 +127,7 @@ test('download contains only the fields selected in the final preview',async({pa
   await page.getByLabel('展示名称').fill('Lin');
   await page.getByRole('button',{name:'添加展示模块'}).click();
   await page.getByLabel('亮点').fill('UNSELECTED_SENTINEL');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();await openStep(page,'分享');
   await page.getByRole('button',{name:'生成分享预览'}).click();
   const download=page.waitForEvent('download');
   await page.getByRole('button',{name:'确认下载名片文件'}).click();
@@ -135,7 +138,7 @@ test('download contains only the fields selected in the final preview',async({pa
 
 test('image export is PNG and vCard is separately confirmed',async({page})=>{
   await page.goto('/');await page.getByLabel('展示名称').fill('Lin');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();await openStep(page,'分享');
   await page.getByRole('button',{name:'生成分享预览'}).click();
   const imageWait=page.waitForEvent('download');
   await page.getByRole('button',{name:'确认下载图片'}).click();
@@ -173,13 +176,14 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   await page.getByLabel('微信').fill('lin_wechat');
   await page.getByLabel('WhatsApp').fill('+44 7700 900123');
   await page.getByRole('button',{name:'加密保存联系方式'}).click();
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
   const card=page.getByRole('region',{name:'我的名片'});
   await expect(card.getByLabel('卡面联系方式').getByRole('button',{name:'复制 邮箱'})).toBeVisible();
   await expect(card).toContainText('lin@example.org');
+  await openStep(page,'分享');
   await page.getByRole('checkbox',{name:/联系方式 · 邮箱/}).check();
   await page.getByRole('button',{name:'生成分享预览'}).click();
-  const preview=page.locator('.share-confirmation pre');
+  const preview=page.locator('.share-confirmed-fields');
   await expect(preview).toContainText('lin@example.org');
   for(const value of ['+1 415 555 0100','lin_wechat','+44 7700 900123'])await expect(preview).not.toContainText(value);
   const download=page.waitForEvent('download');
@@ -190,8 +194,8 @@ test('guest encrypts contact methods and shares only the chosen one',async({page
   await page.reload();
   await expect(page.getByRole('textbox',{name:'展示名称'})).toHaveValue('Lin Contact');
   await expect(page.getByLabel('邮箱',{exact:true})).toBeDisabled();
-  await page.getByRole('textbox',{name:'展示名称',exact:true}).fill('Renamed while locked');
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.locator('#display-name').fill('Renamed while locked');
+  await page.getByRole('button',{name:'保存到本机'}).click();
   await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
   await page.getByRole('button',{name:'解锁联系方式'}).click();
   await page.getByLabel('解锁本地敏感资料').fill('wrong password');
@@ -240,9 +244,32 @@ test('free module slots and keyboard-accessible planned previews never insert ex
   const planned=page.locator('summary').filter({hasText:'Services · 服务'});
   await planned.focus();await page.keyboard.press('Enter');
   await expect(page.getByText('静态示例（不会写入你的名片）：示例：介绍你实际提供的服务、作品或合作条件。请填写真实内容。').first()).toBeVisible();
-  await page.getByRole('button',{name:'保存并更新预览'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
   await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
   await page.reload();
   await expect(page.getByLabel('亮点',{exact:true})).toHaveValue('My real story');
   await expect(page.getByRole('region',{name:'我的名片'})).not.toContainText('Services');
+});
+
+test('two project cases can be edited, reordered, saved, and restored',async({page})=>{
+  await page.goto('/');await page.getByLabel('展示名称').fill('Project owner');
+  const entry=page.locator('details.module-catalog-entry').filter({hasText:'Projects · 项目案例'});
+  await entry.locator('summary').click();
+  await entry.getByRole('button',{name:'添加项目案例'}).click();
+  await page.locator('.editor textarea[id$="-background"]').nth(0).fill('Warehouse picking');
+  await page.locator('.editor textarea[id$="-role"]').nth(0).fill('Product designer');
+  await page.locator('.editor textarea[id$="-action"]').nth(0).fill('Mapped operator workflow');
+  await page.locator('.editor textarea[id$="-result"]').nth(0).fill('Piloted a new flow');
+  await page.locator('.editor textarea[id$="-time"]').nth(0).fill('2025');
+  await page.locator('.editor textarea[id$="-evidence"]').nth(0).fill('Pilot notes');
+  await entry.getByRole('button',{name:'添加项目案例'}).click();
+  await page.locator('.editor textarea[id$="-background"]').nth(1).fill('Inventory planning');
+  await page.locator('.editor textarea[id$="-result"]').nth(1).fill('Reduced stockouts');
+  await page.getByRole('button',{name:'下移 项目案例 1'}).click();
+  await page.getByRole('button',{name:'保存到本机'}).click();
+  await expect(page.locator('.save-status')).toContainText('已保存在此浏览器');
+  await page.reload();
+  await expect(page.locator('.editor textarea[id$="-background"]')).toHaveCount(2);
+  await expect(page.locator('.editor textarea[id$="-background"]').nth(0)).toHaveValue('Inventory planning');
+  await expect(page.locator('.editor textarea[id$="-result"]').nth(1)).toHaveValue('Piloted a new flow');
 });

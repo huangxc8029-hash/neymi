@@ -1,11 +1,18 @@
 import {describe,expect,it} from 'vitest';
-import {canAddFreeModule,moduleCatalog,updateModuleItem} from '../../src/modules/card/module-catalog';
+import {canAddFreeModule,legacyModuleKindMap,moduleCatalog,moveModule,moduleCatalogGroups,updateModuleItem} from '../../src/modules/card/module-catalog';
 import {makeProfile} from '../fixtures/domain';
 import {createVault} from '../../src/modules/vault/vault';
 import {MemoryVaultStorage} from '../../src/modules/vault/storage';
 import {exportBackup,importBackup} from '../../src/modules/vault/backup';
 
 describe('free module additions preserve existing content',()=>{
+  it('groups modules by user goals and permits multiple project cases within the project slot',()=>{
+    const projects=makeProfile({modules:[{id:'project_one',kind:'project',title:'One',items:[]}]});
+    expect(moduleCatalogGroups).toEqual(['认识我','我能提供什么','我的证明','我的观点','与我合作','个人特点与联系']);
+    expect(canAddFreeModule(projects,'project')).toBe(true);
+    expect(legacyModuleKindMap).toMatchObject({story:'my_story',project:'project_case',services:'service',portfolio:'portfolio_gallery',skills:'skills',collaboration:'collaboration_style',availability:'availability',social:'social_links',website:'website',booking:'booking_link'});
+    expect(moveModule(projects,'project_one','up').modules).toEqual(projects.modules);
+  });
   it('allows one content module and one external record, blocks additional or planned modules',()=>{
     const empty=makeProfile({modules:[]});
     for(const kind of ['story','project','website','social'])expect(canAddFreeModule(empty,kind)).toBe(true);

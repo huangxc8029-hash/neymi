@@ -27,8 +27,18 @@ export interface CandidateSelfFact { id: ID; text: string; category: string; ori
 export interface ConfirmedSelfFact extends CandidateSelfFact { confirmedAt: ISOTime; revision: number; }
 export interface ProfileItem {
  id: ID; label: string; value: string; valueKind?: 'text'|'phone'|'email'|'address'; sensitivity: 'ordinary'|'sensitive'; confirmedFactId?: ID;
+ sourceRefs?: ContentSourceRef[]; confirmedAt?: ISOTime;
 }
 export interface ProfileModule { id: ID; kind: string; title: string; items: ProfileItem[]; }
+export interface ContentSourceRef {
+ kind: 'user_text'|'voice_transcript'|'file'|'public_url'; sourceId: ID;
+ page?: number; paragraph?: number; startMs?: number; endMs?: number; createdAt: ISOTime;
+}
+export interface ContentCandidateItem { id: ID; label: string; value: string; valueKind?: 'text'|'phone'|'email'|'address'; }
+export interface ContentCandidate {
+ id: ID; kind: string; title: string; items: ContentCandidateItem[]; sourceRefs: ContentSourceRef[];
+ status: 'candidate'|'needs_review'|'confirmed'|'rejected'; revision: number;
+}
 export interface LocalProfile {
  schemaVersion: 1; id: ID; revision: number;
  identity: { name?: string; company?: string; role?: string };

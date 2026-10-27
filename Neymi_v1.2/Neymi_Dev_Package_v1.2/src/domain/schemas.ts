@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import {isCardLinkItem,normalizeCardUrl} from '../modules/card/links';
+import { contentSourceRefSchema } from '../modules/content/schemas';
 
 const id = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const shortText = z.string().trim().min(1).max(1000);
+const optionalShortText = z.preprocess(value => typeof value === 'string' && !value.trim() ? undefined : value, shortText.optional());
 const text = z.string().trim().min(1).max(20000);
 const isoTime = z.iso.datetime({ offset: true });
 const unique = (values: string[]) => new Set(values).size === values.length;
@@ -13,7 +15,7 @@ const safeCopy = shortText.refine(value => !containsContact(value), 'Contact det
 const mime = z.enum(['image/png', 'image/jpeg', 'image/webp']);
 const layout = z.enum(['editorial', 'constellation', 'ribbon']);
 const animation = z.enum(['float', 'keys', 'orbit']);
-const identity = z.strictObject({ name: shortText.optional(), company: shortText.optional(), role: shortText.optional() });
+const identity = z.strictObject({ name: optionalShortText, company: optionalShortText, role: optionalShortText });
 export const fieldRefSchema = z.strictObject({ moduleId: id, itemId: id });
 const fieldRef = fieldRefSchema;
 export const userGoalSchema = z.strictObject({id,goalType:z.enum(['fundraise','sales','partner','research','social','other']),specificAsk:shortText});
@@ -43,7 +45,7 @@ export const candidateSelfFactSchema = z.strictObject({id,text,category:shortTex
 export const confirmedSelfFactSchema = candidateSelfFactSchema.extend({confirmedAt:isoTime,revision:z.int().positive()});
 const fact = confirmedSelfFactSchema;
 export const profileItemSchema = z.strictObject({id,label:shortText,value:text,valueKind:z.enum(['text','phone','email','address']).optional(),
-  sensitivity:z.enum(['ordinary','sensitive']),confirmedFactId:id.optional()})
+  sensitivity:z.enum(['ordinary','sensitive']),confirmedFactId:id.optional(),sourceRefs:z.array(contentSourceRefSchema).min(1).optional(),confirmedAt:isoTime.optional()})
   .refine(item => item.sensitivity==='sensitive'||((!item.valueKind||item.valueKind==='text')&&!containsContact(item.value)),
     'Contact values must be sensitive');
 const profileItem = profileItemSchema;
@@ -85,8 +87,9 @@ export const publicationSchema = z.strictObject({publicId:id,url:z.url({protocol
   expiresAt:isoTime,revokedAt:isoTime.optional()}).refine(publication => Date.parse(publication.expiresAt)>Date.parse(publication.createdAt),'Invalid publication interval');
 export const publicationReceiptSchema = z.strictObject({publication:publicationSchema,revokeToken:shortText});
 export const cloudContextApprovalSchema = z.strictObject({id,contextId:id,contentDigest:z.string().regex(/^[a-f\d]{64}$/i),purpose:shortText,approvedAt:isoTime});
-export const approvedCloudContextSchema = z.strictObject({approval:cloudContextApprovalSchema,
-  text, factIds:z.array(id),moduleMetadata:z.array(z.strictObject({id,kind:shortText,label:shortText}))});
+const approvedCloudContextFields={approval:cloudContextApprovalSchema,factIds:z.array(id),moduleMetadata:z.array(z.strictObject({id,kind:shortText,label:shortText}))};
+export const approvedCloudContextSchema = z.strictObject({...approvedCloudContextFields,text});
+export const contentProposalCloudContextSchema=z.strictObject({...approvedCloudContextFields,text:z.string().trim().min(1).max(150000)});
 export const relevanceAssessmentSchema = z.strictObject({id,recipientId:id,goalId:id,
   result:z.enum(['qualified','uncertain','not_recommended']),evidenceQuality:z.enum(['strong','mixed','insufficient']),
   positives:z.array(z.strictObject({reason:shortText,claimIds:z.array(id)})),
