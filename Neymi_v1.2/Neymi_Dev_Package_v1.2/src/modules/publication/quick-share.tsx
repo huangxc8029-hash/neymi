@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,useSyncExternalStore} from 'react';
 import type {PublicationReceipt,ShareProjection,ShareSelection} from '../../domain/types';
 import {publicationReceiptSchema} from '../../domain/schemas';
 import {confirmShare,digestProjection} from '../sharing/confirmation';
@@ -11,14 +11,18 @@ import {publicationRequest} from './request';
 type CardKind='free'|'vip';
 type ShareRecord={kind:CardKind;digest:string;idempotencyKey:string;receipt?:PublicationReceipt;revoked?:boolean};
 const storageKey='neymi.share-links.v1';
-function readRecords():ShareRecord[]{
-  try{const value:unknown=JSON.parse(localStorage.getItem(storageKey)??'[]');if(!Array.isArray(value))return[];return value.flatMap(item=>{if(!item||typeof item!=='object')return[];const record=item as Partial<ShareRecord>;if((record.kind!=='free'&&record.kind!=='vip')||typeof record.digest!=='string'||!/^([a-f\d]{64})$/i.test(record.digest)||typeof record.idempotencyKey!=='string'||!/^[A-Za-z0-9_-]{32,200}$/.test(record.idempotencyKey))return[];try{return[{kind:record.kind,digest:record.digest,idempotencyKey:record.idempotencyKey,...(record.receipt?{receipt:publicationReceiptSchema.parse(record.receipt)}:{}),...(record.revoked?{revoked:true}:{})}];}catch{return[];}});}catch{return[];}
+const emptyRecords:ShareRecord[]=[];let cachedRaw:string|null|undefined;let cachedRecords=emptyRecords;
+function parseRecords(raw:string|null):ShareRecord[]{
+  try{const value:unknown=JSON.parse(raw??'[]');if(!Array.isArray(value))return[];return value.flatMap(item=>{if(!item||typeof item!=='object')return[];const record=item as Partial<ShareRecord>;if((record.kind!=='free'&&record.kind!=='vip')||typeof record.digest!=='string'||!/^([a-f\d]{64})$/i.test(record.digest)||typeof record.idempotencyKey!=='string'||!/^[A-Za-z0-9_-]{32,200}$/.test(record.idempotencyKey))return[];try{return[{kind:record.kind,digest:record.digest,idempotencyKey:record.idempotencyKey,...(record.receipt?{receipt:publicationReceiptSchema.parse(record.receipt)}:{}),...(record.revoked?{revoked:true}:{})}];}catch{return[];}});}catch{return[];}
 }
-function writeRecords(records:ShareRecord[]){try{localStorage.setItem(storageKey,JSON.stringify(records));}catch{}}
+function getRecordsSnapshot(){const raw=localStorage.getItem(storageKey);if(raw!==cachedRaw){cachedRaw=raw;cachedRecords=parseRecords(raw);}return cachedRecords;}
+function subscribeRecords(onChange:()=>void){window.addEventListener('storage',onChange);window.addEventListener('neymi:share-records-change',onChange);return()=>{window.removeEventListener('storage',onChange);window.removeEventListener('neymi:share-records-change',onChange);};}
+function writeRecords(records:ShareRecord[]){try{const raw=JSON.stringify(records);localStorage.setItem(storageKey,raw);cachedRaw=raw;cachedRecords=records;window.dispatchEvent(new Event('neymi:share-records-change'));}catch{}}
 function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30_000);}
 
 export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selection:ShareSelection;cardKind:CardKind}){
-  const [records,setRecords]=useState<ShareRecord[]>([]),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState(''),[manageOpen,setManageOpen]=useState(false);
+  const records=useSyncExternalStore(subscribeRecords,getRecordsSnapshot,()=>emptyRecords);
+  const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState(''),[manageOpen,setManageOpen]=useState(false),[now,setNow]=useState(0);
   const projection=useMemo(()=>{try{return projectShare(draft,selection);}catch{return null;}},[draft,selection]);
   const selectedItems=projection?[
     ...Object.entries(projection.identity).map(([key,value])=>`${key==='name'?'展示名称':key==='company'?'公司或团队':'角色'} · ${value}`),
@@ -26,8 +30,8 @@ export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selectio
     ...(projection.assets.length?[`Logo / 图片 · ${projection.assets.length} 张`]:[])
   ]:[];
   const selectedCount=selectedItems.length;
-  useEffect(()=>{setRecords(readRecords());setReady(true);},[]);
-  function commit(next:ShareRecord[]){setRecords(next);writeRecords(next);}
+  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),60_000);return()=>window.clearInterval(timer);},[]);
+  function commit(next:ShareRecord[]){writeRecords(next);}
   async function publish():Promise<PublicationReceipt>{
     if(!projection)throw new Error('当前名片内容暂时无法生成，请检查已选内容。');
     const digest=await digestProjection(projection),existing=records.find(item=>item.kind===cardKind&&item.digest===digest&&!item.revoked&&item.receipt&&Date.parse(item.receipt.publication.expiresAt)>Date.now());
@@ -48,10 +52,10 @@ export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selectio
   return <section className="quick-share" aria-labelledby="quick-share-title">
     <div><h3 id="quick-share-title">分享名片</h3><p>当前：{cardKind==='free'?'Free':'VIP'} 名片 · 已选择 {selectedCount} 项。分享链接会上传这些内容，持有链接的人可以查看，30 天后到期。</p></div>
     <div className="quick-share-selection" aria-label="本次会分享的内容"><strong>本次分享内容</strong>{selectedItems.length?<ul>{selectedItems.map((item,index)=><li key={`${index}-${item}`}>{item}</li>)}</ul>:<p>还没有可分享的已选内容。</p>}</div>
-    <div className="quick-share-actions"><button type="button" disabled={!ready||busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={!ready||busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button></div>
+    <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button></div>
     <div className="quick-share-downloads"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>保存名片图片</button><span aria-hidden="true">·</span><button type="button" disabled={busy||!projection||selectedCount===0} onClick={downloadContact}>下载联系人（vCard）</button></div>
     {manualCopyUrl&&<label className="quick-share-copy-field">分享链接<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
-    <details className="quick-share-management" open={manageOpen} onToggle={event=>setManageOpen(event.currentTarget.open)}><summary>管理分享</summary>{records.filter(record=>record.receipt).length?<div>{records.filter(record=>record.receipt).map(record=><article key={record.receipt!.publication.publicId}><p>{record.kind==='free'?'Free':'VIP'} 名片 · {new Date(record.receipt!.publication.createdAt).toLocaleString()} · {record.revoked?'已停止':Date.parse(record.receipt!.publication.expiresAt)<=Date.now()?'已过期':`有效期至 ${new Date(record.receipt!.publication.expiresAt).toLocaleDateString()}`}</p><a href={record.receipt!.publication.url} target="_blank" rel="noreferrer">打开链接</a>{!record.revoked&&Date.parse(record.receipt!.publication.expiresAt)>Date.now()&&<button type="button" disabled={busy} onClick={()=>void revoke(record)}>停止分享</button>}</article>)}</div>:<p>分享名片后，可在这里查看或停止链接。</p>}</details>
+    <details className="quick-share-management" open={manageOpen} onToggle={event=>{const open=event.currentTarget.open;setManageOpen(open);if(open)setNow(Date.now());}}><summary>管理分享</summary>{records.filter(record=>record.receipt).length?<div>{records.filter(record=>record.receipt).map(record=><article key={record.receipt!.publication.publicId}><p>{record.kind==='free'?'Free':'VIP'} 名片 · {new Date(record.receipt!.publication.createdAt).toLocaleString()} · {record.revoked?'已停止':now>0&&Date.parse(record.receipt!.publication.expiresAt)<=now?'已过期':`有效期至 ${new Date(record.receipt!.publication.expiresAt).toLocaleDateString()}`}</p><a href={record.receipt!.publication.url} target="_blank" rel="noreferrer">打开链接</a>{!record.revoked&&(!now||Date.parse(record.receipt!.publication.expiresAt)>now)&&<button type="button" disabled={busy} onClick={()=>void revoke(record)}>停止分享</button>}</article>)}</div>:<p>分享名片后，可在这里查看或停止链接。</p>}</details>
     {status&&<p role="status">{status}</p>}
   </section>;
 }

@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,useSyncExternalStore} from 'react';
 import Link from 'next/link';
 import type {FieldRef,LocalAsset,LocalDraft,LocalProfile,ManualCardConfig,Motion,ProfileItem,ShareSelection} from '../domain/types';
 import {CardEditor} from '../modules/card/editor';
@@ -19,7 +19,9 @@ import {DemoCard} from '../modules/card/demo-card';
 const initial:LocalProfile={schemaVersion:1,id:'guest_profile',revision:1,identity:{},modules:[],facts:[],assets:[]};
 const templateStorageKey='neymi.card-template',vipTemplateStorageKey='neymi.vip-card-template',vipModulesStorageKey='neymi.vip-visible-modules';
 const freeVisibilityStorageKey='neymi.free-card-visibility.v1',vipVisibilityStorageKey='neymi.vip-card-visibility.v1';
+const templateChangeEvent='neymi:template-change';
 type CardKind='free'|'vip';
+function subscribeTemplateChanges(onChange:()=>void){window.addEventListener('storage',onChange);window.addEventListener(templateChangeEvent,onChange);return()=>{window.removeEventListener('storage',onChange);window.removeEventListener(templateChangeEvent,onChange);};}
 function getSavedTemplate():CardTemplateId{
   if(typeof window==='undefined')return DEFAULT_CARD_TEMPLATE;
   try{const saved=window.localStorage.getItem(templateStorageKey);return isCardTemplateId(saved)?saved:DEFAULT_CARD_TEMPLATE;}
@@ -55,8 +57,8 @@ function manualConfig(profile:LocalProfile,templateId:CardTemplateId,motion:Moti
 function shareSelection(draft:LocalDraft,visibility:CardVisibilitySelection):ShareSelection{return{identity:visibility.identity,fields:[...visibility.fields,...draft.modules.filter(module=>module.kind==='contact').flatMap(module=>module.items.filter(item=>visibility.contacts.includes(item.id)).map(item=>({moduleId:module.id,itemId:item.id})))],assetIds:visibility.logo?draft.assets.map(asset=>asset.id):[]};}
 export default function Home(){
   const [profile,setProfile]=useState<LocalProfile>(initial);
-  const [selectedTemplate,setSelectedTemplate]=useState<CardTemplateId>(DEFAULT_CARD_TEMPLATE);
-  const [selectedVipTemplate,setSelectedVipTemplate]=useState<CardTemplateId>(PRO_CARD_TEMPLATES[0].id);
+  const selectedTemplate=useSyncExternalStore(subscribeTemplateChanges,getSavedTemplate,()=>DEFAULT_CARD_TEMPLATE);
+  const selectedVipTemplate=useSyncExternalStore(subscribeTemplateChanges,getSavedVipTemplate,()=>PRO_CARD_TEMPLATES[0].id);
   const [previewCard,setPreviewCard]=useState<CardKind>('free');
   const [activeEditorStep,setActiveEditorStep]=useState<'content'|'appearance'|'share'>('content');
   const [freeVisibility,setFreeVisibility]=useState<CardVisibilitySelection>(()=>defaultVisibility(initial));
@@ -79,7 +81,6 @@ export default function Home(){
     return()=>clearInterval(timer);
   },[vault]);
   useEffect(()=>{
-    setSelectedTemplate(getSavedTemplate());setSelectedVipTemplate(getSavedVipTemplate());
     let active=true;
     vault.loadPublicProfile().then(saved=>{if(!active)return;setProfile(saved);const fallback=defaultVisibility(saved);setFreeVisibility(readVisibility(freeVisibilityStorageKey,fallback)??fallback);setVipVisibility(readVipVisibility(saved));setProfileLoaded(true);}).catch(()=>{if(active)setProfileLoaded(true);});
     return()=>{active=false;};
@@ -102,8 +103,7 @@ export default function Home(){
     setProfile(next);setSaveStatus('正在保存…');
   }
   async function chooseTemplate(templateId:CardTemplateId){
-    setSelectedTemplate(templateId);
-    try{window.localStorage.setItem(templateStorageKey,templateId);}catch{}
+    try{window.localStorage.setItem(templateStorageKey,templateId);window.dispatchEvent(new Event(templateChangeEvent));}catch{}
   }
   function updateVisibility(kind:CardKind,value:CardVisibilitySelection){
     if(kind==='free')setFreeVisibility(value);else setVipVisibility(value);
