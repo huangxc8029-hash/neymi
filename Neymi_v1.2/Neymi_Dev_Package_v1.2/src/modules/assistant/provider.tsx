@@ -59,10 +59,11 @@ export function AssistantProvider({children}:{children:ReactNode}){
       const target=task==='import'?document.querySelector<HTMLElement>('.content-import-panel'):
         task==='style_pairing'?document.querySelector<HTMLElement>('#vip-template-picker-title'):
         task==='recipient_card'?document.querySelector<HTMLElement>('#vip-recipient-context'):
-        task==='share_check'?document.querySelector<HTMLElement>('.vip-share-section'):
+        task==='share_check'?document.querySelector<HTMLElement>('.vip-workflow .editor-stepper [data-step="share"]'):
         task==='create_module'||task==='facts'||task==='copy_edit'||task==='bilingual'?document.querySelector<HTMLElement>('#vip-manual-text'):null;
       target?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'center'});
-      if(target instanceof HTMLButtonElement||target instanceof HTMLInputElement||target instanceof HTMLTextAreaElement)target.focus();
+      if(target instanceof HTMLButtonElement){if(task==='share_check')target.click();target.focus();}
+      else if(target instanceof HTMLInputElement||target instanceof HTMLTextAreaElement)target.focus();
     },180);
   }
   function trapFocus(event:KeyboardEvent<HTMLElement>){

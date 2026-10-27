@@ -58,6 +58,7 @@ export default function Home(){
   const [selectedTemplate,setSelectedTemplate]=useState<CardTemplateId>(DEFAULT_CARD_TEMPLATE);
   const [selectedVipTemplate,setSelectedVipTemplate]=useState<CardTemplateId>(PRO_CARD_TEMPLATES[0].id);
   const [previewCard,setPreviewCard]=useState<CardKind>('free');
+  const [activeEditorStep,setActiveEditorStep]=useState<'content'|'appearance'|'share'>('content');
   const [freeVisibility,setFreeVisibility]=useState<CardVisibilitySelection>(()=>defaultVisibility(initial));
   const [vipVisibility,setVipVisibility]=useState<CardVisibilitySelection>(()=>defaultVisibility(initial));
   const [profileLoaded,setProfileLoaded]=useState(false);
@@ -116,7 +117,7 @@ export default function Home(){
       <p className="intro">先完成一张免费的基础名片，再按需要补充展示内容。分享前，你可以逐项确认公开信息。</p></div>
       <a className="hero-action" href="#card-form">{profile.identity.name?.trim()?'继续编辑':'开始填写'} <span aria-hidden="true">↓</span></a></section>
     <div className="home-example"><DemoCard templateId={selectedTemplate} motion={motion} replayKey={demoReplayKey} homeExample showReplay onReplay={()=>setDemoReplayKey(key=>key+1)}/></div>
-    <div className="studio studio-workspace" id="card-form">
+    <div className="studio studio-workspace" id="card-form" data-active-step={activeEditorStep}>
       <nav className="studio-nav" aria-label="工作区">
         <span className="studio-nav-label">工作区</span>
         <Link className="studio-nav-link current" href="/" aria-current="page"><span aria-hidden="true">✦</span> 制作名片</Link>
@@ -124,20 +125,16 @@ export default function Home(){
         <Link className="studio-nav-link" href="/vip"><span aria-hidden="true">✧</span> VIP 名片</Link>
         <Link className="studio-nav-link" href="/cards"><span aria-hidden="true">▤</span> 我的卡片库</Link>
       </nav>
-      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} motion={motion} onMotion={setMotion}
+      <div className="editor-column"><CardEditor profile={profile} onChange={updateProfile} motion={motion} onMotion={setMotion} activeStep={activeEditorStep} onStepChange={setActiveEditorStep} saveStatus={saveStatus}
         freeTemplateContent={<TemplatePicker selected={selectedTemplate} onSelect={chooseTemplate} mode="free"/>}
-        baseContent={<ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);void vault.readContacts().then(values=>setPrivateContacts(contactItems(values))).catch(()=>setPrivateContacts([]));}}/>}/></div>
+        baseContent={<ContactPanel vault={vault} profile={profile} onSaved={saved=>{setProfile(saved);void vault.readContacts().then(values=>setPrivateContacts(contactItems(values))).catch(()=>setPrivateContacts([]));}}/>}
+        shareContent={visibleDraft&&activeShareSelection?<QuickShare draft={visibleDraft} selection={activeShareSelection} cardKind={previewCard}/>:<p className="share-empty">填写展示名称后，即可生成分享链接或下载名片。</p>}/></div>
       <aside className="preview-panel">
         <div className="preview-heading"><div><h2>实时预览</h2><p>{visibleDraft?`${previewCard==='free'?'Free':'VIP'} 卡片；更改显示选项会立即更新。`:'填写展示名称后，你的名片会显示在这里。'}</p></div>{visibleDraft&&<span className="example-tag live-tag">{previewCard==='free'?'Free':'VIP'} 预览</span>}</div>
         {visibleDraft?<CardRenderer draft={visibleDraft} visibleIdentityFields={activeVisibility.identity} visibleFieldIds={activeVisibility.fields.map(fieldKey)} visibleContactIds={activeVisibility.contacts} showLogo={activeVisibility.logo}/>:<div className="preview-empty"><span aria-hidden="true">✦</span><p>从左侧填写展示名称，开始制作。</p></div>}
       </aside>
       <CardVisibilityPanel profile={profile} contacts={privateContacts} logoAvailable={Boolean(logo)} activeCard={previewCard} freeSelection={freeVisibility} vipSelection={vipVisibility} onCardChange={setPreviewCard} onSelectionChange={updateVisibility}/>
     </div>
-    <div className="step-intro share-step-intro"><h3 id="studio-finish-title">Step 4 分享名片</h3><p>右侧勾选的内容会用于预览、链接和下载；联系方式默认不公开。</p></div>
-    <section className="studio-finish quick-share-step" aria-labelledby="studio-finish-title">
-      {visibleDraft&&activeShareSelection?<QuickShare draft={visibleDraft} selection={activeShareSelection} cardKind={previewCard}/>:<p className="share-empty">填写展示名称后，即可分享或下载名片。</p>}
-      {saveStatus&&<p className="save-status" role="status">{saveStatus}</p>}
-    </section>
     <section className="assistant-panel studio-aftercare" aria-labelledby="assistant-title"><div className="assistant-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3v6m0 14v6M3 16h6m14 0h6M6.8 6.8 11 11m10 10 4.2 4.2m0-19.4L21 11m-10 10-4.2 4.2"/><circle cx="16" cy="16" r="5"/></svg></div><div className="assistant-copy"><h2 id="assistant-title">为具体的人做好准备</h2><p>梳理自己的故事，再为关键联系人准备交流重点。</p></div><Link className="assistant-link" href="/beyond">进入 Beyond 名片 <span aria-hidden="true">→</span></Link></section>
     <nav className="mobile-work-nav" aria-label="主要功能"><Link href="/" aria-current="page"><span aria-hidden="true">✦</span>制作名片</Link><Link href="/beyond"><span aria-hidden="true">◇</span>Beyond 名片</Link><Link href="/vip"><span aria-hidden="true">✧</span>VIP 名片</Link><Link href="/cards"><span aria-hidden="true">▤</span>我的卡片库</Link></nav>
     <footer className="site-footer"><span>免注册 · 本地优先 · 分享由你决定</span><Link href="/cards?tab=received">查看收到的卡片</Link></footer>

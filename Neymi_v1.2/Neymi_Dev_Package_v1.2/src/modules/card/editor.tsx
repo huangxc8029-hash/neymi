@@ -11,7 +11,13 @@ const vipGroups=[
   {title:'与我合作',choices:[['collaboration_style','合作方式']]},
   {title:'个人特点与更多链接',choices:[['interests','个人特点'],['social','社交账号'],['website','个人网站']]},
 ] as const;
-export function CardEditor({profile,onChange,motion,onMotion,freeTemplateContent,vipTemplateContent,baseContent,vipContent,mode='base'}:{profile:LocalProfile;onChange:(profile:LocalProfile)=>void;motion:Motion;onMotion:(motion:Motion)=>void;freeTemplateContent?:ReactNode;vipTemplateContent?:ReactNode;baseContent?:ReactNode;vipContent?:ReactNode;mode?:'base'|'vip'}){
+export type StudioStep='content'|'appearance'|'share';
+export const studioSteps:Array<{id:StudioStep;label:string;summary:string}>=[
+  {id:'content',label:'内容',summary:'填写身份与联系方式'},
+  {id:'appearance',label:'外观',summary:'选择模板与动效'},
+  {id:'share',label:'分享',summary:'确认公开内容并交付'},
+];
+export function CardEditor({profile,onChange,motion,onMotion,freeTemplateContent,vipTemplateContent,baseContent,vipContent,shareContent,activeStep='content',onStepChange,saveStatus,mode='base'}:{profile:LocalProfile;onChange:(profile:LocalProfile)=>void;motion:Motion;onMotion:(motion:Motion)=>void;freeTemplateContent?:ReactNode;vipTemplateContent?:ReactNode;baseContent?:ReactNode;vipContent?:ReactNode;shareContent?:ReactNode;activeStep?:StudioStep;onStepChange?:(step:StudioStep)=>void;saveStatus?:string;mode?:'base'|'vip'}){
   function identity(key:'name'|'company'|'role',value:string){onChange({...profile,revision:profile.revision+1,identity:{...profile.identity,[key]:value.trim()?value:undefined}});}
   function addSection(kind:string,title:string){
     const id=`module_${crypto.randomUUID().replaceAll('-','')}`;
@@ -30,9 +36,11 @@ export function CardEditor({profile,onChange,motion,onMotion,freeTemplateContent
   }
   function linkError(value:string){try{normalizeCardUrl(value);return '';}catch{return '链接仅支持有效的 http/https 网址，不能包含登录凭据。';}}
   return <section className={`editor ${mode==='vip'?'vip-page-editor':''}`} aria-labelledby={mode==='vip'?'vip-editor-title':'editor-title'}>
-    {mode==='base'&&<><div className="editor-title-row"><div className="editor-step" aria-hidden="true">✦</div><div><h2 id="editor-title">快速制作你的名片</h2><p>从名字开始。联系方式只保存在你的本机加密区。</p></div></div>
+    {mode==='base'&&<><div className="editor-title-row"><div className="editor-step" aria-hidden="true">✦</div><div><h2 id="editor-title">名片工作室</h2><p>先整理内容，再选择呈现方式，最后决定分享什么。</p></div></div>{saveStatus&&<p className="studio-save-status" role="status">{saveStatus}</p>}
+    <nav className="editor-stepper" aria-label="名片制作步骤">{studioSteps.map((step,index)=><button type="button" key={step.id} data-step={step.id} className={activeStep===step.id?'is-active':''} aria-current={activeStep===step.id?'step':undefined} onClick={()=>onStepChange?.(step.id)}><span className="editor-stepper-number">0{index+1}</span><span className="editor-stepper-copy"><strong>{step.label}</strong><small>{step.summary}</small></span></button>)}</nav>
+    <div className="editor-step-panel" hidden={activeStep!=='content'} aria-label="填写名片内容">
     <div className="workflow-step workflow-step-light">
-    <div className="step-intro"><h3>Step 1 填写基础信息</h3><p>填写必要资料，为名片建立清晰的身份信息。</p></div>
+    <div className="step-intro"><h3>建立你的身份</h3><p>姓名是唯一建议填写的内容，公司与角色都可以稍后补充。</p></div>
     <label htmlFor="display-name">展示名称 · 从名字开始</label>
     <input id="display-name" autoComplete="name" maxLength={120} value={profile.identity.name??''} placeholder="例如：林予安" onChange={event=>identity('name',event.target.value)}/>
     <label htmlFor="company">公司或团队（选填）</label>
@@ -40,10 +48,14 @@ export function CardEditor({profile,onChange,motion,onMotion,freeTemplateContent
     <label htmlFor="role">角色（选填）</label>
     <input id="role" maxLength={120} value={profile.identity.role??''} onChange={event=>identity('role',event.target.value)}/>
     </div>
-    <div className="workflow-step workflow-step-dark"><div className="step-intro"><h3>Step 2 添加联系方式</h3><p>联系方式保存在本机加密区，分享前由你逐项选择。</p></div>{baseContent}</div>
-    <div className="workflow-step workflow-step-light"><div className="step-intro"><h3>Step 3 选择模板</h3><p>选择名片风格，预览会随选择即时更新。</p></div><div className="free-template-area">{freeTemplateContent}</div>
+    <div className="workflow-step workflow-step-dark"><div className="step-intro"><h3>联系方式（可选）</h3><p>联系方式保存在本机加密区，默认不公开；可在右侧逐项勾选。</p></div>{baseContent}</div>
+    </div>
+    <div className="editor-step-panel" hidden={activeStep!=='appearance'} aria-label="选择名片外观">
+    <div className="workflow-step workflow-step-light"><div className="step-intro"><h3>选择模板与动效</h3><p>模板只改变呈现方式，不会删除或改写你的资料。</p></div><div className="free-template-area">{freeTemplateContent}</div>
     <MotionPicker value={motion} onChange={onMotion}/>
-    </div></>}
+    </div></div></>}
+    {mode==='base'&&<div className="editor-step-panel editor-share-step" hidden={activeStep!=='share'} aria-label="确认并分享名片"><div className="step-intro"><h3>确认并分享</h3><p>右侧勾选控制公开内容，实时预览会同步更新。准备好后选择分享链接或下载格式。</p></div>{shareContent}</div>}
+    {mode==='base'&&<div className="editor-step-actions" aria-label="步骤导航">{activeStep!=='content'&&<button type="button" className="secondary" onClick={()=>onStepChange?.(activeStep==='share'?'appearance':'content')}>上一步</button>}{activeStep!=='share'&&<button type="button" onClick={()=>onStepChange?.(activeStep==='content'?'appearance':'share')}>{activeStep==='content'?'下一步：选择外观':'下一步：确认分享'}</button>}</div>}
     {mode==='vip'&&<div className="editor-step-panel vip-content-step">
       <div className="step-intro"><h3 id="vip-editor-title">VIP 名片</h3><p>丰富名片展示内容，并预览高级模板。会员开通尚未接入；本页可在本机编辑和预览。</p></div>
       {vipTemplateContent}

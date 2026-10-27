@@ -20,7 +20,12 @@ function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),anc
 export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selection:ShareSelection;cardKind:CardKind}){
   const [records,setRecords]=useState<ShareRecord[]>([]),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState(''),[manageOpen,setManageOpen]=useState(false);
   const projection=useMemo(()=>{try{return projectShare(draft,selection);}catch{return null;}},[draft,selection]);
-  const selectedCount=selection.identity.filter(key=>Boolean(draft.identity[key]?.trim())).length+selection.fields.length+selection.assetIds.length;
+  const selectedItems=projection?[
+    ...Object.entries(projection.identity).map(([key,value])=>`${key==='name'?'展示名称':key==='company'?'公司或团队':'角色'} · ${value}`),
+    ...projection.modules.flatMap(section=>section.items.map(item=>`${section.title} · ${item.label}：${item.value}`)),
+    ...(projection.assets.length?[`Logo / 图片 · ${projection.assets.length} 张`]:[])
+  ]:[];
+  const selectedCount=selectedItems.length;
   useEffect(()=>{setRecords(readRecords());setReady(true);},[]);
   function commit(next:ShareRecord[]){setRecords(next);writeRecords(next);}
   async function publish():Promise<PublicationReceipt>{
@@ -42,6 +47,7 @@ export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selectio
   async function revoke(record:ShareRecord){if(!record.receipt)return;if(!window.confirm('停止后，这个链接将无法打开。已保存的图片和联系人不会被删除。'))return;setBusy(true);setStatus('正在停止分享…');try{const response=await publicationRequest(`/v1/publications/${encodeURIComponent(record.receipt.publication.publicId)}`,{method:'DELETE',headers:{authorization:`Bearer ${record.receipt.revokeToken}`}});if(!response.ok)throw new Error('停止分享失败，请稍后重试。');commit(records.map(item=>item===record?{...item,revoked:true}:item));setStatus('分享链接已停止。');}catch(error){setStatus(error instanceof Error?error.message:'停止分享失败。');}finally{setBusy(false);}}
   return <section className="quick-share" aria-labelledby="quick-share-title">
     <div><h3 id="quick-share-title">分享名片</h3><p>当前：{cardKind==='free'?'Free':'VIP'} 名片 · 已选择 {selectedCount} 项。分享链接会上传这些内容，持有链接的人可以查看，30 天后到期。</p></div>
+    <div className="quick-share-selection" aria-label="本次会分享的内容"><strong>本次分享内容</strong>{selectedItems.length?<ul>{selectedItems.map((item,index)=><li key={`${index}-${item}`}>{item}</li>)}</ul>:<p>还没有可分享的已选内容。</p>}</div>
     <div className="quick-share-actions"><button type="button" disabled={!ready||busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={!ready||busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button></div>
     <div className="quick-share-downloads"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>保存名片图片</button><span aria-hidden="true">·</span><button type="button" disabled={busy||!projection||selectedCount===0} onClick={downloadContact}>下载联系人（vCard）</button></div>
     {manualCopyUrl&&<label className="quick-share-copy-field">分享链接<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
