@@ -11,12 +11,17 @@ import {getFixtureMessagingAdapter,getMessagingService} from './messaging-runtim
 import {fetchPublic} from './fetch-public';
 import {validateActivityText} from '../modules/activity/service';
 import {planActivity} from '../modules/activity/planning';
+import {proposeModules} from '../modules/content/propose-modules';
+import {contentSourceRefSchema} from '../modules/content/schemas';
+import {serializeContentSourceSegments} from '../modules/content/source-manifest';
+import {contentProposalCloudContextSchema} from '../domain/schemas';
 import {runScheduledCleanup} from './cleanup';
 import {timingSafeEqual} from 'node:crypto';
 import {ZodError} from 'zod';
 import {z} from 'zod';
 const jobInputSchema=z.strictObject({kind:z.literal('context'),context:z.unknown()});
 const factsInputSchema=z.strictObject({context:z.unknown()});
+const moduleProposalsInputSchema=z.strictObject({context:z.unknown(),segments:z.array(z.strictObject({sourceRef:contentSourceRefSchema,text:z.string().trim().min(1).max(20000)})).min(1).max(100)});
 const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()});
 const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
 const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),approvedContext:z.unknown()});
@@ -76,6 +81,7 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const session=await createSession();
       return json({expiresAt:session.expiresAt},201,{'Set-Cookie':sessionCookie(session,new URL(request.url).protocol==='https:')});
     }
+    if(request.method==='GET'&&path==='session'){if(!readSession(request))throw notFound();return json({active:true});}
     if(request.method==='DELETE'&&path==='session'){
       if(!originOk(request))throw invalidRequest('Invalid origin');
       return json({ok:true},200,{'Set-Cookie':'neymi_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'});
@@ -86,6 +92,20 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=factsInputSchema.parse(await readJson(request));
       await authorizeContext(input.context as never);
       return json({facts:await proposeSelfFacts(input.context as never)});
+    }
+    if(path==='modules/proposals'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=moduleProposalsInputSchema.parse(await readJson(request,1024*1024));
+      const context=contentProposalCloudContextSchema.parse(input.context);
+      await authorizeContext(context,contentProposalCloudContextSchema);
+      const sourceManifest=`Selected source segments: ${serializeContentSourceSegments(input.segments)}`;
+      const sourceSuffix=`\n\n${sourceManifest}`;
+      if(!context.text.endsWith(sourceSuffix))throw new ApiError('PERMISSION_DENIED','Source selection must be part of the approved text',403);
+      const provider=getLLMProvider();if(!provider.proposeModules)throw unavailable('AI module proposal is not configured');
+      const sources=input.segments.map(segment=>segment.sourceRef);
+      const proposals=await proposeModules({text:context.text.slice(0,-sourceSuffix.length),approvedSourceIds:[...new Set(sources.map(source=>source.sourceId))],approvedSources:sources,approvedSourceSegments:input.segments},()=>provider.proposeModules!(context,sources,input.segments,request.signal));
+      return json({proposals});
     }
     if(path==='coach'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');

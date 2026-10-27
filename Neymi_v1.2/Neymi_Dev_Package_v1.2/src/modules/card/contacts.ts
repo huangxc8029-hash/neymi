@@ -1,15 +1,16 @@
 import type {ProfileItem} from '../../domain/types';
 
-export type ContactChannel='email'|'phone'|'wechat'|'whatsapp';
+export type ContactChannel='email'|'phone'|'wechat'|'whatsapp'|'address';
 export const CONTACT_MODULE_ID='contact_methods';
-export const CONTACT_CHANNELS:ReadonlyArray<{key:ContactChannel;label:string;valueKind:'email'|'phone'|'text';autoComplete?:string}>=[
+export const CONTACT_CHANNELS:ReadonlyArray<{key:ContactChannel;label:string;valueKind:'email'|'phone'|'text'|'address';autoComplete?:string}>=[
   {key:'email',label:'邮箱',valueKind:'email',autoComplete:'email'},
   {key:'phone',label:'电话',valueKind:'phone',autoComplete:'tel'},
   {key:'wechat',label:'微信',valueKind:'text'},
   {key:'whatsapp',label:'WhatsApp',valueKind:'phone',autoComplete:'tel'},
+  {key:'address',label:'联系地址（可只填城市）',valueKind:'address',autoComplete:'street-address'},
 ];
 export type ContactValues=Record<ContactChannel,string>;
-export const emptyContacts=():ContactValues=>({email:'',phone:'',wechat:'',whatsapp:''});
+export const emptyContacts=():ContactValues=>({email:'',phone:'',wechat:'',whatsapp:'',address:''});
 export function contactItems(values:ContactValues):ProfileItem[]{
   return CONTACT_CHANNELS.flatMap(({key,label,valueKind})=>{
     const value=values[key].trim();

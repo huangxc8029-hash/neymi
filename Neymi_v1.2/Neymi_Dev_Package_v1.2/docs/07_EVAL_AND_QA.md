@@ -58,3 +58,7 @@ AC-C02：一次性 ticket 到期/复用拒绝；webview 无 vault 时提供恢�
 
 ## 验证纪律
 npm 命令在 A01 才创建。文档检查不能替代应用测试。每项记录命令、真实输出和设备/浏览器。设备覆盖至少桌面浏览器、手机 Safari/Chrome 与目标聊天软件内置浏览器；没有真机访问时标 NOT RUN，不能声称 G-A3 完成。
+
+## Creative content release evidence
+
+Task-local checks cover schema/source bounds, file signatures and parser limits, malformed or unsupported input, voice provider consent and cancellation, module allowlists and approved source IDs, template fallback, and idempotent entitlement reservation. The test transcription provider fails closed; no real ASR, OCR, content-module LLM endpoint, account system, billing provider, mobile device or hosted environment was exercised. Those checks remain NOT RUN until providers, devices and COM endpoints exist.

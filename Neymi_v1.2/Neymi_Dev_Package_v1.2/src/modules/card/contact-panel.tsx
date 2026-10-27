@@ -36,7 +36,7 @@ export function ContactPanel({vault,profile,onSaved}:{vault:Vault;profile:LocalP
   }
   const locked=initialized===null||(initialized&&!unlocked);
   return <section className="contact-panel" aria-labelledby="contact-title">
-    <h3 id="contact-title">联系方式（可选）</h3>
+    <h3 id="contact-title">加密保存联系方式</h3>
     <p>联系方式加密保存在此浏览器，不会自动上传。分享前，由你选择公开哪些信息。</p>
     {CONTACT_CHANNELS.map(({key,label,autoComplete})=><label key={key} htmlFor={`contact-${key}`}>
       {label}<input id={`contact-${key}`} value={values[key]} disabled={locked||busy} placeholder={locked?'已锁定，解锁后查看或修改':'选填'} autoComplete={autoComplete??'off'} maxLength={200}

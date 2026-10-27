@@ -64,7 +64,7 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
   async function cacheOffline(){
     if(!draft||stale)return;setBusy(true);
     try{await cachePreparedCard(draft,vault);setStatus('已用本地加密保险库保存此版本，可在此设备离线查看。');}
-    catch(error){setStatus(error&&typeof error==='object'&&(error as {code?:string}).code==='PERMISSION_DENIED'?'请先到“我的准备卡”设置或解锁本地加密区，再缓存离线副本。':error instanceof Error?error.message:'加密缓存失败。');}
+    catch(error){setStatus(error&&typeof error==='object'&&(error as {code?:string}).code==='PERMISSION_DENIED'?'请先到“我的卡片库”设置或解锁本地加密区，再缓存离线副本。':error instanceof Error?error.message:'加密缓存失败。');}
     finally{setBusy(false);}
   }
   return <section style={{marginTop:32,borderTop:'1px solid #ddd',paddingTop:24}}>

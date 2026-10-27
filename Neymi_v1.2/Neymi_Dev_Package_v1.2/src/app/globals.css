@@ -4,3 +4,6 @@ a{color:inherit;text-underline-offset:4px}.wordmark{font-size:28px;font-weight:8
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.19em;text-transform:uppercase;color:var(--gold)}
 footer{padding:50px 0 20px;color:var(--sub);font-size:13px}
 html{scroll-behavior:smooth}body{background:radial-gradient(ellipse at 72% -18%,#202b394d,transparent 47%),var(--bg);min-height:100vh}button,input,textarea,select{color:inherit}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+
+.prepare-header{display:flex;align-items:center;gap:24px}.prepare-back{display:inline-flex;align-items:center;gap:9px;color:var(--sub);font-size:13px;font-weight:600;text-decoration:none;transition:color .18s ease}.prepare-back span{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--edge);border-radius:50%;color:var(--cream);font-size:17px;transition:background-color .18s ease,border-color .18s ease}.prepare-back:hover{color:var(--cream)}.prepare-back:hover span{border-color:#e2c38f88;background:#e2c38f16}
+@media(max-width:600px){.prepare-header{gap:14px}.prepare-back{gap:7px;font-size:12px}}

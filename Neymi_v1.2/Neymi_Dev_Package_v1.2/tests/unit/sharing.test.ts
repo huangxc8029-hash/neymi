@@ -23,6 +23,13 @@ describe('share projection',()=>{
     expect(bytes).not.toContain('recipientId');
     expect(p.identity.name).toBe('Lin');
   });
+  it('never projects private source references or confirmation state',()=>{
+    const profile=makeProfile();
+    Object.assign(profile.modules[0].items[0],{sourceRefs:[{kind:'file',sourceId:'private_source',page:2,createdAt:'2026-10-26T00:00:00.000Z'}],confirmedAt:'2026-10-26T00:01:00.000Z'});
+    const projection=projectShare(createManualDraft(profile,makeManual()),makeSelection());
+    expect(JSON.stringify(projection)).not.toContain('private_source');
+    expect(JSON.stringify(projection)).not.toContain('confirmedAt');
+  });
   it('escapes malicious vCard line breaks and omits hidden values',()=>{
     const draft=privateDraft();draft.modules[0].items[0].value='Demo\nTEL:PRIVATE_PHONE';
     const p=projectShare(draft,makeSelection());

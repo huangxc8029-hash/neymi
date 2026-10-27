@@ -1,2 +1,2 @@
-import {Receiver} from '../../modules/sharing/receiver';
-export default function ReceivePage(){return <Receiver/>;}
+import {redirect} from 'next/navigation';
+export default function ReceivePage(){redirect('/cards?tab=received');}

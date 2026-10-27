@@ -51,7 +51,20 @@ export function AssistantProvider({children}:{children:ReactNode}){
   }
   const value=useMemo(()=>({intent,input,messages,facts,selectedFactIds,setSelectedFactIds,setAvailableFacts:setFacts,appendMessage,registerSubmitHandler,openAssistant,closeAssistant}),[intent,input,messages,facts,selectedFactIds,appendMessage,registerSubmitHandler,openAssistant,closeAssistant]);
   function dismiss(){setDismissed(true);setPromptIndex(assistantPrompts.length);try{sessionStorage.setItem(dismissKey,'1');}catch{}}
-  function moveTo(task:AssistantIntent){setIntent(task);setOpen(true);router.push(task==='event'?'/activity':'/prepare');}
+  function moveTo(task:AssistantIntent){
+    setIntent(task);setOpen(task==='person'||task==='person_prep'||task==='event'||task==='event_prep'||task==='highlight');
+    const route=task==='event'||task==='event_prep'?'/activity':task==='person'||task==='person_prep'||task==='highlight'?'/prepare':['import','create_module','style_pairing','copy_edit','bilingual','share_check','facts','recipient_card'].includes(task)?'/vip':'/';
+    router.push(route);
+    window.setTimeout(()=>{
+      const target=task==='import'?document.querySelector<HTMLElement>('.content-import-panel'):
+        task==='style_pairing'?document.querySelector<HTMLElement>('#vip-template-picker-title'):
+        task==='recipient_card'?document.querySelector<HTMLElement>('#vip-recipient-context'):
+        task==='share_check'?document.querySelector<HTMLElement>('.vip-share-section'):
+        task==='create_module'||task==='facts'||task==='copy_edit'||task==='bilingual'?document.querySelector<HTMLElement>('#vip-manual-text'):null;
+      target?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'center'});
+      if(target instanceof HTMLButtonElement||target instanceof HTMLInputElement||target instanceof HTMLTextAreaElement)target.focus();
+    },180);
+  }
   function trapFocus(event:KeyboardEvent<HTMLElement>){
     if(event.key==='Escape'){event.preventDefault();closeAssistant();return;}
     if(event.key!=='Tab')return;
@@ -84,11 +97,17 @@ export function AssistantProvider({children}:{children:ReactNode}){
           {intent==='highlight'&&<p>AI 返回的经历只会作为候选；点击单条确认后才保存到本地事实。</p>}
           {intent==='person'&&!hasSubmitHandler&&<p role="status">单人助手暂不可用；你仍可手动填写下方接收人和研究流程。</p>}
         </>}
-        {pathname==='/activity'&&<button type="button" className="assistant-close-secondary" onClick={()=>{const target=document.querySelector<HTMLElement>('#event-name');if(target)opener.current=target;closeAssistant();requestAnimationFrame(()=>target?.focus());}}>开始活动准备</button>}
+        {pathname==='/activity'&&<button type="button" className="assistant-close-secondary" onClick={()=>{const target=document.querySelector<HTMLElement>('#event-name');if(target)opener.current=target;closeAssistant();requestAnimationFrame(()=>target?.focus());}}>填写活动资料</button>}
         <div className="assistant-task-list">
-          <button type="button" aria-pressed={intent==='person'} onClick={()=>moveTo('person')}><strong>为一个人准备</strong><span>结合交流对象与已确认事实，形成可审阅的介绍策略。</span></button>
-          <button type="button" aria-pressed={intent==='event'} onClick={()=>moveTo('event')}><strong>为一场活动准备</strong><span>沿用活动资料流程，最多 20 位嘉宾。</span></button>
+          <button type="button" aria-pressed={intent==='person'} onClick={()=>moveTo('person')}><strong>关于自己的故事</strong><span>整理真实经历，再针对一位交流对象准备介绍。</span></button>
+          <button type="button" aria-pressed={intent==='event'} onClick={()=>moveTo('event')}><strong>瞄准关键联系人</strong><span>整理活动资料与嘉宾名单，最多 20 位。</span></button>
           <button type="button" aria-pressed={intent==='highlight'} onClick={()=>moveTo('highlight')}><strong>一起找亮点</strong><span>整理经历并确认后保存为本地事实。</span></button>
+          <button type="button" aria-pressed={intent==='recipient_card'} onClick={()=>moveTo('recipient_card')}><strong>为特定对象准备名片</strong><span>填写对方职业角色与会面目的，再从已确认材料中挑出相关故事、履历和项目。</span></button>
+          <button type="button" aria-pressed={intent==='import'} onClick={()=>moveTo('import')}><strong>整理文件或语音材料</strong><span>打开本地导入与录音审阅；内容保留在本机临时区。</span></button>
+          <button type="button" aria-pressed={intent==='create_module'} onClick={()=>moveTo('create_module')}><strong>创建展示模块</strong><span>回到名片内容编辑区；候选内容须经你校对后保存。</span></button>
+          <button type="button" aria-pressed={intent==='style_pairing'} onClick={()=>moveTo('style_pairing')}><strong>挑选卡片风格</strong><span>根据故事、作品和这次交流目的，比较六款 VIP 视觉主题。</span></button>
+          <button type="button" aria-pressed={intent==='share_check'} onClick={()=>moveTo('share_check')}><strong>检查分享内容</strong><span>打开分享确认步骤，逐项检查公开字段。</span></button>
+          <button type="button" aria-pressed={intent==='copy_edit'} onClick={()=>moveTo('copy_edit')}><strong>润色或双语改写</strong><span>返回本地编辑区；内容生成服务未配置时可继续手工编辑。</span></button>
         </div>
         <footer><span>联系方式不会进入 AI 请求</span><button type="button" className="assistant-close-secondary" onClick={closeAssistant}>完成</button></footer>
       </section>

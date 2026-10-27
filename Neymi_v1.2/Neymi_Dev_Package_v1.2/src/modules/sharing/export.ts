@@ -6,6 +6,20 @@ import {isCardLinkItem} from '../card/links';
 
 const encode=(value:string)=>new TextEncoder().encode(value);
 const vEscape=(value:string)=>value.replaceAll('\\','\\\\').replace(/\r\n|\r|\n/g,'\\n').replaceAll(';','\\;').replaceAll(',','\\,');
+function drawTemplateAccents(ctx:CanvasRenderingContext2D,id:string,accent:string,end:string){
+  ctx.save();ctx.globalAlpha=.42;
+  if(id.startsWith('mosaic-')){
+    const tiles=[[1050,70,250,210],[1270,220,170,200],[1020,400,260,180],[1260,570,180,160],[900,250,160,190]];
+    tiles.forEach(([x,y,w,h],i)=>{ctx.fillStyle=i%2?end:accent;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+w,y+h*.12);ctx.lineTo(x+w*.82,y+h);ctx.lineTo(x+w*.12,y+h*.78);ctx.closePath();ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.stroke();});
+  }else if(id.startsWith('dopamine-')){
+    [[1290,150,76],[1430,390,52],[1170,650,66]].forEach(([x,y,r],i)=>{ctx.fillStyle=i%2?end:accent;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();});
+    ctx.fillStyle='#fff';ctx.font='700 80px sans-serif';ctx.fillText('✦',1110,310);
+  }else if(id.startsWith('anime-')){
+    ctx.strokeStyle=accent;ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(1050,70);ctx.lineTo(1440,120);ctx.lineTo(1390,600);ctx.lineTo(1000,560);ctx.closePath();ctx.stroke();
+    for(let i=0;i<5;i++){ctx.globalAlpha=.18;ctx.fillStyle=i%2?end:accent;ctx.fillRect(1080+i*68,180+i*32,56,12);}
+  }
+  ctx.restore();
+}
 export function serializeNcard(projection:ShareProjection):Uint8Array{
   return encode(JSON.stringify(shareProjectionSchema.parse(projection)));
 }
@@ -16,6 +30,7 @@ export function serializeVcard(projection:ShareProjection):Uint8Array{
   if(p.identity.role)lines.push(`TITLE:${vEscape(p.identity.role)}`);
   for(const section of p.modules)for(const item of section.items){
     const label=item.label.toLowerCase();
+    if(section.kind==='contact'&&/地址|address/.test(label)){lines.push(`ADR:;;${vEscape(item.value)};;;;`);continue;}
     const kind=isCardLinkItem(section.kind,item.label)?'URL':section.kind==='social'?'NOTE':/email|邮箱|邮件/.test(label)?'EMAIL':/phone|tel|电话|手机/.test(label)?'TEL':'NOTE';
     lines.push(`${kind}:${vEscape(kind==='NOTE'?`${item.label}: ${item.value}`:item.value)}`);
   }
@@ -29,6 +44,7 @@ export async function renderImage(projection:ShareProjection):Promise<Blob>{
   const template=getCardTemplate(p.templateId),gradient=ctx.createLinearGradient(0,0,1500,900);
   gradient.addColorStop(0,template.start);gradient.addColorStop(1,template.end);
   ctx.fillStyle=gradient;ctx.fillRect(0,0,1500,900);
+  drawTemplateAccents(ctx,template.id,template.accent,template.end);
   if(template.image){
     const response=await fetch(template.image);if(!response.ok)throw new Error('Card background unavailable');
     const bitmap=await createImageBitmap(await response.blob());
@@ -42,10 +58,10 @@ export async function renderImage(projection:ShareProjection):Promise<Blob>{
   ctx.fillStyle=template.ink;ctx.font='600 82px sans-serif';ctx.fillText(p.identity.name??'',82,290,1250);
   ctx.fillStyle=template.muted;ctx.font='32px sans-serif';ctx.fillText([p.identity.company,p.identity.role].filter(Boolean).join(' · '),82,350,1250);
   const contacts=p.modules.filter(section=>section.kind==='contact').flatMap(section=>section.items);
-  for(let i=0;i<Math.min(contacts.length,4);i++){
-    const item=contacts[i],x=82+(i%2)*640,y=460+Math.floor(i/2)*115;
-    ctx.fillStyle=template.muted;ctx.font='24px sans-serif';ctx.fillText(item.label,x,y,580);
-    ctx.fillStyle=template.ink;ctx.font='30px sans-serif';ctx.fillText(item.value,x,y+43,580);
+  for(let i=0;i<Math.min(contacts.length,6);i++){
+    const item=contacts[i],x=82+(i%2)*640,y=430+Math.floor(i/2)*75;
+    ctx.fillStyle=template.muted;ctx.font='19px sans-serif';ctx.fillText(item.label,x,y,580);
+    ctx.fillStyle=template.ink;ctx.font='25px sans-serif';ctx.fillText(item.value,x,y+30,580);
   }
   ctx.font='26px sans-serif';let x=82;
   for(const section of p.modules.filter(section=>section.kind!=='contact')){

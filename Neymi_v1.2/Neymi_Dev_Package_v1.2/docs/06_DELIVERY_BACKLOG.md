@@ -59,5 +59,11 @@ B/C 是路线级任务；C 实施步骤见 [C 实施计划](superpowers/plans/20
 
 第一份可操作演示仍可争取 1–2 工作日，但模拟数据必须标注，不能视为 G-A3。相较原先 7–12 日粗估，本次显式计入加密恢复、快照托管/撤下和完整验证，修订为 A 12–18 工作日。A04、A09 后各重估一次。供应商、托管、真机和用户反馈等待另计；重大范围变动重新估算。
 
+## Creative cards and content assistant follow-up
+
+Completed locally: a six-group module catalog with repeatable project case modules; nine registered mosaic/dopamine/anime Pro previews; local PDF/DOCX/TXT/image intake with source locations; temporary browser recording and manual transcript review; transcription and module-proposal ports; deterministic style pairing; and test-only read-only entitlement/reservation fixtures. Existing guest card creation and sharing remain available.
+
+Not enabled for production: account/OAuth, paid checkout, server-side entitlement, production metering, ASR, OCR, or a content-module LLM endpoint. Pro templates remain preview-only. These require separate COM/provider work and must not be presented as available paid features until configured and deployed.
+
 ## Definition of Done
 每任务有实现文件、小范围提交、实际 typecheck/lint/相关单测与集成结果、负例与隐私边界说明。最终含 responsive/reduced-motion、真实 API 和真机矩阵。无密钥、无设备、无部署权限时准确区分可测部分和阻塞项，不用截图或 mock 宣称上线完成。推送、部署、付费和发送真实消息需明确指令。
