@@ -1,7 +1,8 @@
 import {expect,test} from '@playwright/test';
 
 test('voice notes stay local until explicitly sent and preserve their source in the AI request',async({page})=>{
-  let submitted:Record<string,any>|undefined;
+  type DesignerTurnBody={message?:string;evidence:{sourceId:string;quote:string}[];slots:Record<string,unknown>};
+  let submitted:DesignerTurnBody|undefined;
   await page.route('**/v1/session',route=>route.request().method()==='GET'
     ?route.fulfill({status:404,json:{error:{message:'No session'}}})
     :route.fulfill({status:201,json:{expiresAt:new Date(Date.now()+60_000).toISOString()}}));
