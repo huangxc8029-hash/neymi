@@ -274,3 +274,87 @@
 .vip-workflow>.motion-picker .motion-option.selected{border-color:#e2c38f99;background:#e2c38f15;color:#f1d6a5}
 .vip-workflow .demo-replay{padding:8px 11px;border:1px solid #e2c38f66;border-radius:999px;background:#e2c38f12;color:#f1d6a5;font-size:11px;cursor:pointer}
 
+
+/* Four-step base studio: compact contact and personal details, with sharing on template step. */
+.editor-stepper{grid-template-columns:repeat(4,minmax(0,1fr))}
+.editor-stepper button{justify-content:center;gap:8px;padding:12px 8px!important}
+.editor-stepper-copy strong{font-size:12px;white-space:nowrap}
+.editor-step-actions{display:flex;justify-content:space-between;gap:10px}
+.editor-step-actions button{min-height:44px;padding:10px 18px}
+.editor-step-actions button:only-child{margin-left:auto}
+.template-choice-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.template-choice-columns>.free-template-area,.template-choice-columns>.pro-template-area{min-width:0;padding:15px;border:1px solid #ffffff20;border-radius:12px;background:#0d1219}
+.template-choice-columns .template-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.template-choice-columns .template-option{min-width:0;padding:8px}
+.template-choice-columns .template-swatch{height:76px}
+.template-choice-columns .template-option-description{font-size:10px}
+.template-choice-columns .template-picker-heading{align-items:flex-start}
+.template-choice-columns .template-picker-heading h2{font-size:18px!important}
+.template-choice-columns .template-picker-heading p{font-size:11px;line-height:1.5}
+.template-choice-columns .template-selected{font-size:9px}
+.template-more{width:100%;min-height:38px;margin-top:8px;border:1px solid #d9bd8a66;border-radius:8px;background:#d9bd8a12;color:#e8d3ad;font-size:12px;font-weight:650;cursor:pointer}
+.template-more:hover{background:#d9bd8a24}
+.editor-inline-share{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.92fr);align-items:end;gap:12px 22px;margin-top:10px;padding:20px;border:1px solid #e2c38f42;border-radius:13px;background:linear-gradient(130deg,#20221f,#111720 78%)}
+.editor-inline-share>.step-intro{align-self:center}
+.editor-inline-share>.step-intro h3{margin:0 0 6px!important;color:#f0ebe3!important}
+.editor-inline-share>.step-intro p{margin:0;color:#aaa9a3!important;font-size:12px;line-height:1.55}
+.editor-inline-share>.quick-share{grid-column:2;grid-row:1 / span 2;width:100%;padding:0;border:0;background:transparent;box-shadow:none}
+.editor-inline-share>.quick-share .quick-share-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.editor-inline-share>.share-empty{grid-column:2;grid-row:1 / span 2;align-self:center;color:#aaa9a3;font-size:12px;line-height:1.6}
+.editor-appearance-step>.workflow-step-light{gap:16px}
+.personal-info-fields{display:grid;gap:16px}
+.personal-info-fields>.step-intro h3{margin:0 0 6px!important;color:#f0ebe3!important}
+.personal-info-fields>.step-intro p{margin:0;color:#aaa9a3!important;font-size:12px;line-height:1.6}
+.personal-step-actions{display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid #ffffff17}
+.personal-step-actions button{min-height:42px;padding:9px 20px}
+@media(max-width:1000px){.template-choice-columns{grid-template-columns:1fr}.editor-inline-share{grid-template-columns:minmax(0,1fr) minmax(240px,.9fr)}}
+@media(max-width:760px){.editor-stepper{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:6px;z-index:6;background:#0d1219ed;backdrop-filter:blur(16px)}.editor-stepper button{display:grid;justify-items:center;gap:4px;padding:8px 3px!important}.editor-stepper-copy strong{font-size:10px}.editor-stepper-number{font-size:8px}.template-choice-columns{grid-template-columns:1fr;gap:14px}.template-choice-columns>.free-template-area,.template-choice-columns>.pro-template-area{padding:12px}.template-choice-columns .template-swatch{height:68px}.editor-inline-share{grid-template-columns:minmax(0,1fr);gap:10px;margin-top:4px;padding:15px}.editor-inline-share>.quick-share,.editor-inline-share>.share-empty{grid-column:1;grid-row:auto}.editor-inline-share>.quick-share .quick-share-actions{display:grid;grid-template-columns:1fr 1fr}.editor-step-actions{position:sticky;bottom:82px;z-index:5;padding:9px;border:1px solid #ffffff1b;border-radius:11px;background:#111720ed;backdrop-filter:blur(16px)}}
+.visibility-vip-badge{display:inline-flex;align-items:center;margin-left:6px;padding:2px 6px;border:1px solid #d9bd8a66;border-radius:999px;color:#e2c38f;font-size:9px;font-style:normal;font-weight:700;line-height:1.2;vertical-align:middle}
+
+/* Keep the final share step focused; reveal details only when requested. */
+.quick-share-summary{display:grid;gap:8px;min-width:0}
+.quick-share-summary>p{font-size:11px}
+.quick-share-selection{grid-column:auto;gap:8px;padding:0;border:0}
+.quick-share-selection>summary,.quick-share-download-options>summary{color:#d8c29d;font-size:11px;cursor:pointer}
+.quick-share-selection[open]{padding:9px 0;border-top:1px solid #ffffff18;border-bottom:1px solid #ffffff18}
+.quick-share-download-options{grid-column:1/-1}
+.quick-share-downloads{grid-column:auto;flex-wrap:wrap;padding-top:7px}
+.quick-share-management{padding-top:8px}
+.editor-inline-share>.quick-share{gap:10px 18px}
+@media(max-width:760px){.editor-inline-share>.quick-share{gap:10px}.quick-share-downloads{gap:12px}}
+
+.template-stage-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 20px}
+.template-stage-heading>.step-intro{flex:1;min-width:180px}
+.template-stage-heading>.motion-picker{flex:none;margin:0;padding:0;border:0;background:transparent}
+.template-stage-heading .motion-picker legend{padding:0 4px;color:#555c57;font-size:10px;font-weight:700}
+.template-stage-heading .motion-picker p{display:none}
+.template-stage-heading .motion-picker [role=group]{justify-content:flex-end;gap:5px}
+.editor .template-stage-heading .motion-picker button.motion-option{min-height:29px;padding:5px 8px;border-color:#c8c8c3;background:#fff;color:#434641;font-size:9px}
+.editor .template-stage-heading .motion-picker button.motion-option.selected{border-color:#b3915c;background:#f3eadb;color:#604a2b}
+.editor-inline-share>.quick-share .quick-share-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.editor-inline-share>.quick-share .quick-share-actions button{min-width:0;min-height:40px;padding:8px 6px;font-size:11px;white-space:nowrap}
+@media(max-width:760px){.template-stage-heading{align-items:center;gap:8px}.template-stage-heading>.step-intro{min-width:120px}.template-stage-heading .motion-picker [role=group]{justify-content:flex-start;flex-wrap:nowrap}.editor .template-stage-heading .motion-picker button.motion-option{padding:5px 6px;font-size:8px}.editor-inline-share>.quick-share .quick-share-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Fifth studio step: visibility choices precede the final share actions. */
+.editor-stepper{grid-template-columns:repeat(5,minmax(0,1fr))}
+.studio.studio-workspace{grid-template-columns:minmax(0,1.2fr) minmax(300px,.85fr)}
+.studio-workspace .editor-column{grid-column:1}
+.studio-workspace .preview-panel{grid-column:2}
+.studio-workspace .editor-column .card-visibility-panel-inline{grid-column:1;position:static;display:grid;gap:12px;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:inherit}
+.editor-visibility-step>.workflow-step{gap:14px}
+.editor-visibility-step .card-visibility-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.editor-visibility-step .card-visibility-options>section{align-content:start;padding:12px;border:1px solid #ffffff18;border-radius:12px;background:#0d1219}
+.editor-visibility-step .card-visibility-options>section[aria-labelledby="visibility-modules-title"]{grid-column:1/-1}
+.editor-visibility-step .card-visibility-module{display:grid;gap:4px;min-width:0;margin:0;padding:5px;border:1px solid #ffffff12;border-radius:8px;background:#ffffff04}
+.editor-visibility-step .card-visibility-module>label{padding:4px;border:0;background:transparent;font-weight:650}
+.editor-visibility-step .card-visibility-module-fields summary{padding:4px;color:#aaa9a3;font-size:10px;cursor:pointer}
+.editor-visibility-step .card-visibility-module-fields>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.editor-visibility-step .card-visibility-module-fields label{padding:5px;font-size:10px}
+.editor-visibility-actions{display:flex;justify-content:flex-end}
+.editor-visibility-actions button{min-height:40px;padding:8px 18px}
+.editor-visibility-step .editor-inline-share{display:block;margin:0;padding:0;border:0;background:transparent}
+.editor-visibility-step .editor-inline-share>.quick-share{display:block;width:100%;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+.editor-visibility-step .quick-share-compact .quick-share-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.editor-visibility-step .quick-share-compact .quick-share-actions button{min-width:0;min-height:44px;padding:9px 8px;white-space:nowrap}
+@media(max-width:760px){.editor-stepper{grid-template-columns:repeat(5,minmax(0,1fr))}.editor-stepper-copy strong{font-size:9px;white-space:normal;line-height:1.15;text-align:center}.editor-stepper-number{font-size:8px}.studio.studio-workspace{grid-template-columns:minmax(0,1fr)}.studio-workspace .editor-column,.studio-workspace .preview-panel{grid-column:1}.editor-visibility-step .card-visibility-options{grid-template-columns:minmax(0,1fr)}.editor-visibility-step .card-visibility-options>section[aria-labelledby="visibility-modules-title"]{grid-column:1}.editor-visibility-step .card-visibility-module-fields>div{grid-template-columns:minmax(0,1fr)}.editor-visibility-step .quick-share-compact .quick-share-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.editor-visibility-step .quick-share-compact .quick-share-actions button{padding:8px 4px;font-size:10px}}
+@media(max-width:760px){.mobile-work-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}.studio-workspace .mobile-work-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}}

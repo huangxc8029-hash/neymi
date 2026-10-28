@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from 'vitest';
 import {DeepSeekLLMProvider,getLLMProvider,UnconfiguredLLMProvider} from '../../src/server/providers/llm';
 import {TavilyResearchProvider} from '../../src/server/providers/research';
 import {createContextApproval,buildCloudContext} from '../../src/modules/self/facts';
+import {emptyDesignerSlots} from '../../src/modules/assistant/designer/workflow';
 
 describe('configured provider adapters with local transports',()=>{
   it('selects DeepSeek from its server key without requiring a model override',()=>{
@@ -45,6 +46,31 @@ describe('configured provider adapters with local transports',()=>{
     const context=await buildCloudContext(text,[],approval);
     const transport=vi.fn(async()=>Response.json({choices:[{message:{content:JSON.stringify({facts:[{text:'Won a prize',category:'achievement',evidence:'won a prize'}]})}}]}));
     await expect(new DeepSeekLLMProvider('fake-key','deepseek-flash',transport as typeof fetch).proposeFacts(context)).rejects.toThrow('evidence');
+  });
+  it('places the fixed card designer skill in the system prompt, not the user payload',async()=>{
+    let requestBody:{messages:Array<{content:string}>}|undefined;
+    const transport=vi.fn(async(_url:RequestInfo|URL,options?:RequestInit)=>{
+      requestBody=JSON.parse(String(options?.body));
+      return Response.json({choices:[{message:{content:JSON.stringify({reply:'这张名片主要用于什么场景？',slotCandidates:[],factCandidates:[],suggestedQuestion:{field:'purposeType',text:'这张名片主要用于什么场景？',choices:['商务合作']}})}}]});
+    });
+    const result=await new DeepSeekLLMProvider('fake-key','deepseek-flash',transport as typeof fetch).designerTurn!({message:'做一张名片',slots:emptyDesignerSlots(),evidence:[],recentMessages:[],templateIds:['paper']});
+    expect(requestBody?.messages[0].content).toContain('Neymi Card Designer');
+    expect(requestBody?.messages[0].content).toContain('ask for the display name before the highlight');
+    expect(requestBody?.messages[1].content).not.toContain('"skill"');
+    expect(result).toMatchObject({reply:'这张名片主要用于什么场景？'});
+  });
+
+  it('repairs one malformed designer turn against the strict output contract',async()=>{
+    const transport=vi.fn(async()=>Response.json({choices:[{message:{content:JSON.stringify(transport.mock.calls.length===1?{reply:'名片显示什么名字？',slotCandidates:[{key:'displayName',value:'林予安'}],factCandidates:[],suggestedQuestion:null}:{reply:'名片显示什么名字？',slotCandidates:[{field:'displayName',value:'林予安'}],factCandidates:[],suggestedQuestion:null})}}]}));
+    const result=await new DeepSeekLLMProvider('fake-key','deepseek-flash',transport as typeof fetch).designerTurn!({message:'我的名字是林予安',slots:emptyDesignerSlots(),evidence:[],recentMessages:[],templateIds:['paper']});
+    expect(result).toMatchObject({reply:'名片显示什么名字？'});expect(transport).toHaveBeenCalledTimes(2);
+  });
+
+  it('repairs one malformed basic-card proposal without inventing content',async()=>{
+    const valid={templateId:'soft-signal',alternatives:[],rationale:'留白简洁，适合基础身份卡。',identityFieldRefs:['name'],modules:[],proposedFieldRefs:[],omissions:[],missingInformation:['真实经历亮点']};
+    const transport=vi.fn(async()=>Response.json({choices:[{message:{content:JSON.stringify(transport.mock.calls.length===1?{templateId:'soft-signal'}:valid)}}]}));
+    const result=await new DeepSeekLLMProvider('fake-key','deepseek-flash',transport as typeof fetch).designerProposal!({message:'make a basic card',slots:{...emptyDesignerSlots(),displayName:'Sample',purposeType:'general',audienceMode:'general',primaryHighlightRef:'__basic__'},evidence:[],recentMessages:[],templateIds:['soft-signal'],confirmedEvidenceIds:[],allowedFieldRefs:[]});
+    expect(result).toMatchObject({templateId:'soft-signal',modules:[]});expect(transport).toHaveBeenCalledTimes(2);
   });
 
   it('returns a follow-up question with only locally evidenced candidate facts',async()=>{

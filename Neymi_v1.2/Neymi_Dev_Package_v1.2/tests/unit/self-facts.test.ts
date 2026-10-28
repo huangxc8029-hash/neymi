@@ -2,6 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {MemoryVaultStorage} from '../../src/modules/vault/storage';
 import {createVault} from '../../src/modules/vault/vault';
 import {detectSensitiveText,buildCloudContext,cloudContextText,confirmSelfFact,LocalFactsStore,proposeSelfFacts} from '../../src/modules/self/facts';
+import {detectSensitiveText as detectSensitiveTextClient} from '../../src/modules/self/sensitive-text';
 import type {ApprovedCloudContext,CandidateSelfFact} from '../../src/domain/types';
 import {timestamp} from '../fixtures/domain';
 
@@ -17,6 +18,7 @@ describe('self facts and cloud context',()=>{
     const matches=detectSensitiveText(text);
     expect(matches.map(item=>item.kind)).toEqual(['email','phone','address']);
     expect(matches.every(({start,end})=>text.slice(start,end).length>0)).toBe(true);
+    expect(detectSensitiveTextClient(text)).toEqual(matches);
   });
   it('requires exact approved text and refuses detected contacts',async()=>{
     const context=await approved('I built a robotics demo.');

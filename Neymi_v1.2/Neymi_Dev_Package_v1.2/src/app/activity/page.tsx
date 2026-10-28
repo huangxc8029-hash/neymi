@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {AccountEntry} from '../../modules/auth/account-entry';
 import type {CardRecipe,ConfirmedSelfFact,ConnectionStrategy,InteractionContext,LocalProfile,RecipientResearch} from '../../domain/types';
 import {IndexedDbVaultStorage} from '../../modules/vault/storage';
 import {createVault} from '../../modules/vault/vault';
@@ -100,7 +101,7 @@ export default function ActivityPage(){
   const cloudPreview=JSON.stringify({purpose:'为本活动逐位拟定表达方案',event:{name:activity.name,goal:activity.goal},selectedSelfText:aiContext.trim(),selectedConfirmedFacts:selectedFacts.map(fact=>fact.text),recipients:eligibleForAi.map(({displayName,organization,role,description})=>({displayName,organization,role,description}))},null,2);
   const cloudSensitive=detectSensitiveText(cloudPreview);
   return <main className="workspace beyond-task-page activity-page">
-    <header className="prepare-header"><Link className="wordmark" href="/">neymi</Link><Link className="prepare-back" href="/beyond" aria-label="返回 Beyond 名片"><span aria-hidden="true">←</span> 返回 Beyond 名片</Link></header>
+    <header className="prepare-header"><Link className="wordmark" href="/">neymi</Link><Link className="prepare-back" href="/beyond" aria-label="返回 Beyond 名片"><span aria-hidden="true">←</span> 返回 Beyond 名片</Link><AccountEntry className="secondary-account-entry"/></header>
     <section className="hero beyond-task-hero"><div><h1>瞄准关键联系人</h1><p className="intro">从活动资料中选出要联系的人，核实身份后，再逐位准备交流重点。单次最多 20 人。</p></div></section>
     <div className="activity-layout">
       <section className="activity-phase" aria-labelledby="activity-context-title"><div className="activity-phase-heading"><span>活动背景</span><h2 id="activity-context-title">这次交流，你想达成什么？</h2><p>先描述活动和目标，再补充公开活动资料或嘉宾介绍。</p></div>
@@ -120,6 +121,6 @@ export default function ActivityPage(){
       <p className="activity-privacy-note">已确认本人事实：{facts.length} 条。只有明确确认后，所选内容才用于 AI 方案；名片合成与分享仍需分别授权。</p>
     </div>
     <footer><Link href="/prepare">关于自己的故事</Link> · <Link href="/cards">我的卡片库</Link> · 活动与跟进笔记保存在当前浏览器</footer>
-    <nav className="mobile-work-nav" aria-label="主要功能"><Link href="/"><span aria-hidden="true">✦</span>制作名片</Link><Link href="/beyond" aria-current="page"><span aria-hidden="true">◇</span>Beyond 名片</Link><Link href="/vip"><span aria-hidden="true">✧</span>VIP 名片</Link><Link href="/cards"><span aria-hidden="true">▤</span>我的卡片库</Link></nav>
+    <nav className="mobile-work-nav" aria-label="主要功能"><Link href="/"><span aria-hidden="true">✦</span>制作名片</Link><Link href="/beyond" aria-current="page"><span aria-hidden="true">◇</span>Beyond 名片</Link><Link href="/cards"><span aria-hidden="true">▤</span>我的卡片库</Link></nav>
   </main>;
 }

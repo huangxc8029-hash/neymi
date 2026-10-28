@@ -18,6 +18,6 @@ export function ModuleProposalReview({proposals,profile,onApply,purpose=''}:{pro
       <div className="content-import-actions"><button type="button" onClick={()=>void confirm(proposal)}>确认并加入名片</button><button type="button" className="secondary" onClick={()=>setDismissed(ids=>[...ids,proposal.id])}>忽略</button></div>
     </article>)}
     {error&&<p role="alert">{error}</p>}
-    <details><summary>针对本次目的推荐的卡片风格</summary><p>推荐依据：本次准备目的与候选内容类型；AI 不会根据接收人的敏感属性推断喜好。你可以去 VIP 模板区切换主题。</p>{styles.map(style=>{const template=getCardTemplate(style.templateId);return <p key={style.templateId}>{template.name} · {style.layout} · {style.availability==='pro'?'VIP':'免费'}：{style.rationale}</p>;})}</details>
+    <details><summary>针对本次目的推荐的卡片风格</summary><p>推荐依据：本次准备目的与候选内容类型；AI 不会根据接收人的敏感属性推断喜好。可在名片工作室的“挑选模板”步骤查看可用模板。</p>{styles.map(style=>{const template=getCardTemplate(style.templateId);return <p key={style.templateId}>{template.name} · {style.layout} · {style.availability==='pro'?'VIP':'免费'}：{style.rationale}</p>;})}</details>
   </section>;
 }

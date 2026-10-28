@@ -2,8 +2,13 @@ import {readSession,createSession,sessionCookie} from './session';
 import {getConfiguredJobStore} from './store';
 import {ApiError,invalidRequest,notFound,rateLimited,unavailable} from './errors';
 import {authorizeContext} from '../modules/consent/cloud';
-import {proposeSelfFacts} from '../modules/self/facts';
+import {proposeSelfFacts} from '../modules/self/propose-facts.server';
 import {coachSelfIntro,getLLMProvider,UnconfiguredLLMProvider} from './providers/llm';
+import {designerProposalInputSchema,designerTurnInputSchema} from '../modules/assistant/designer/schemas';
+import {retainConfirmedPrimaryHighlight} from '../modules/assistant/designer/workflow';
+import {mergeSlotCandidates,nextDesignerQuestion,validateDesignerProposal,validateDesignerEvidenceSources,validateDesignerFactCandidates} from '../modules/assistant/designer/workflow';
+import {FREE_CARD_TEMPLATES} from '../modules/card/templates';
+import {designerPayloadContainsContact,serializeDesignerProposalPayload,serializeDesignerTurnPayload} from '../modules/assistant/designer/payload';
 import {getResearchService} from './research-runtime';
 import {planStrategy} from '../modules/strategy/plan';
 import {getPublicationService} from './publication-runtime';
@@ -113,6 +118,46 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const input=factsInputSchema.parse(await readJson(request));
       await authorizeContext(input.context as never);
       return json(await coachSelfIntro(input.context as never));
+    }
+    if(path==='designer/turn'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=designerTurnInputSchema.parse(await readJson(request,256*1024));
+      validateDesignerEvidenceSources(input.message,input.recentMessages,input.evidence);
+      await authorizeContext(input.approvedContext as never);
+      const context=input.approvedContext as {text:string};
+      const authorizedPayload=serializeDesignerTurnPayload(input);
+      if(context.text!==authorizedPayload)throw new ApiError('PERMISSION_DENIED','Approved AI payload does not match the submitted designer turn',403);
+      if(designerPayloadContainsContact(input))throw new ApiError('PERMISSION_DENIED','Approved AI payload contains contact details',403);
+      const available=new Set<string>(FREE_CARD_TEMPLATES.map(template=>template.id));
+      if(input.templateIds.some(id=>!available.has(id)))throw invalidRequest('Only currently available free templates may be sent to the designer');
+      const provider=getLLMProvider();if(!provider.designerTurn)throw unavailable('Card designer AI is not configured');
+      const result=await provider.designerTurn(input,request.signal) as {reply:string;slotCandidates:Array<{field:string;value:unknown;evidenceIds?:string[]}>;factCandidates:Array<{text:string;evidenceIds:string[]}>};
+      const evidenceIds=new Set(input.evidence.filter(item=>item.status!=='rejected').map(item=>item.id));
+      validateDesignerFactCandidates(result.factCandidates,input.evidence);
+      if(result.slotCandidates.some(item=>item.evidenceIds?.some(id=>!evidenceIds.has(id))))throw unavailable('Card designer returned unsupported evidence');
+      const identityFields=new Set(['displayName','role','organization']);
+      if(result.slotCandidates.some(item=>identityFields.has(item.field)&&(typeof item.value!=='string'||!input.message.includes(item.value.trim()))))throw unavailable('Card designer returned identity text not present in the user message');
+      const slots=mergeSlotCandidates(input.slots,result.slotCandidates);
+      return json({reply:result.reply,slots,question:nextDesignerQuestion(slots),factCandidates:result.factCandidates,requestId:input.requestId,sessionRevision:input.sessionRevision,profileRevision:input.profileRevision});
+    }
+    if(path==='designer/proposal'&&request.method==='POST'){
+      if(!originOk(request))throw invalidRequest('Invalid origin');
+      const owner=readSession(request);if(!owner)throw notFound();
+      const input=designerProposalInputSchema.parse(await readJson(request,256*1024));
+      validateDesignerEvidenceSources(input.message,input.recentMessages,input.evidence);
+      await authorizeContext(input.approvedContext as never);
+      const context=input.approvedContext as {text:string;moduleMetadata:Array<{id:string}>};
+      if(context.text!==serializeDesignerProposalPayload(input)||designerPayloadContainsContact(input))throw new ApiError('PERMISSION_DENIED','Approved proposal payload does not match or contains contact details',403);
+      const confirmedEvidenceIds=new Set(input.evidence.filter(item=>item.status==='confirmed').map(item=>item.id));
+      if(input.confirmedEvidenceIds.some(id=>!confirmedEvidenceIds.has(id)))throw invalidRequest('Only explicitly confirmed source evidence may be used in a card proposal');
+      const templates=new Set<string>(FREE_CARD_TEMPLATES.map(template=>template.id));if(input.templateIds.some(id=>!templates.has(id)))throw invalidRequest('Only currently available free templates may be proposed');
+      const confirmed=new Set(input.evidence.filter(item=>item.status==='confirmed').map(item=>item.id));
+      if(input.confirmedEvidenceIds.some(id=>!confirmed.has(id))||input.evidence.some(item=>item.status==='candidate'||item.status==='rejected'))throw new ApiError('PERMISSION_DENIED','Only user-confirmed evidence may be used',403);
+      const allowedModules=new Set(context.moduleMetadata.map(item=>item.id));if(input.allowedFieldRefs.some(ref=>!allowedModules.has(ref.moduleId)))throw new ApiError('PERMISSION_DENIED','Proposal referenced an unapproved profile module',403);
+      const provider=getLLMProvider();if(!provider.designerProposal)throw unavailable('Card designer AI is not configured');
+      const raw=await provider.designerProposal(input,request.signal),proposal=retainConfirmedPrimaryHighlight(raw as never,input.slots.primaryHighlightRef,input.evidence),validated=validateDesignerProposal(proposal,{templateIds:input.templateIds,evidenceIds:input.confirmedEvidenceIds,fieldRefs:input.allowedFieldRefs},input.evidence);
+      return json({proposal:validated,requestId:input.requestId,sessionRevision:input.sessionRevision,profileRevision:input.profileRevision});
     }
     if(path==='plan'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');

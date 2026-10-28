@@ -1,5 +1,6 @@
 import {expect,test} from '@playwright/test';
 test.use({serviceWorkers:'allow'});
+test.skip(!process.env.NEYMI_E2E_PRODUCTION,'Next dev intentionally unregisters the production service worker. Set NEYMI_E2E_PRODUCTION=1 with a production server.');
 
 test('public pages and APIs stay network-only while the local shell falls back offline',async({page,context})=>{
   await page.goto('/');

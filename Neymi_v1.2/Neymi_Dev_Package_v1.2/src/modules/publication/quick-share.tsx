@@ -1,10 +1,10 @@
 'use client';
-import {useEffect,useMemo,useState,useSyncExternalStore} from 'react';
-import type {PublicationReceipt,ShareProjection,ShareSelection} from '../../domain/types';
+import {useMemo,useState,useSyncExternalStore} from 'react';
+import type {PublicationReceipt,ShareSelection} from '../../domain/types';
 import {publicationReceiptSchema} from '../../domain/schemas';
 import {confirmShare,digestProjection} from '../sharing/confirmation';
 import {projectShare} from '../sharing/projection';
-import {renderImage,serializeVcard} from '../sharing/export';
+import {renderImage} from '../sharing/export';
 import type {LocalDraft} from '../../domain/types';
 import {publicationRequest} from './request';
 
@@ -20,17 +20,11 @@ function subscribeRecords(onChange:()=>void){window.addEventListener('storage',o
 function writeRecords(records:ShareRecord[]){try{const raw=JSON.stringify(records);localStorage.setItem(storageKey,raw);cachedRaw=raw;cachedRecords=records;window.dispatchEvent(new Event('neymi:share-records-change'));}catch{}}
 function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30_000);}
 
-export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selection:ShareSelection;cardKind:CardKind}){
+export function QuickShare({draft,selection,cardKind,compact=false}:{draft:LocalDraft;selection:ShareSelection;cardKind:CardKind;compact?:boolean}){
   const records=useSyncExternalStore(subscribeRecords,getRecordsSnapshot,()=>emptyRecords);
-  const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState(''),[manageOpen,setManageOpen]=useState(false),[now,setNow]=useState(0);
+  const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState('');
   const projection=useMemo(()=>{try{return projectShare(draft,selection);}catch{return null;}},[draft,selection]);
-  const selectedItems=projection?[
-    ...Object.entries(projection.identity).map(([key,value])=>`${key==='name'?'展示名称':key==='company'?'公司或团队':'角色'} · ${value}`),
-    ...projection.modules.flatMap(section=>section.items.map(item=>`${section.title} · ${item.label}：${item.value}`)),
-    ...(projection.assets.length?[`Logo / 图片 · ${projection.assets.length} 张`]:[])
-  ]:[];
-  const selectedCount=selectedItems.length;
-  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),60_000);return()=>window.clearInterval(timer);},[]);
+  const selectedCount=projection?Object.keys(projection.identity).length+projection.modules.reduce((count,section)=>count+section.items.length,0)+projection.assets.length:0;
   function commit(next:ShareRecord[]){writeRecords(next);}
   async function publish():Promise<PublicationReceipt>{
     if(!projection)throw new Error('当前名片内容暂时无法生成，请检查已选内容。');
@@ -47,15 +41,10 @@ export function QuickShare({draft,selection,cardKind}:{draft:LocalDraft;selectio
   async function copyLink(){setBusy(true);setStatus('正在准备分享链接…');setManualCopyUrl('');try{const receipt=await publish();try{await navigator.clipboard.writeText(receipt.publication.url);setStatus('链接已复制，可以粘贴发送。');}catch{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请手动复制。');}}catch(error){setStatus(error instanceof Error?error.message:'无法准备分享链接。');}finally{setBusy(false);}}
   async function shareLink(){setBusy(true);setStatus('正在准备分享链接…');setManualCopyUrl('');try{const receipt=await publish();if(!navigator.share){try{await navigator.clipboard.writeText(receipt.publication.url);setStatus('此浏览器不支持系统分享，链接已复制。');}catch{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请手动复制。');}return;}setStatus('正在打开系统分享面板；选择接收人或关闭面板后会返回此页。');try{await navigator.share({title:draft.identity.name||'Neymi 名片',text:'查看我的数字名片',url:receipt.publication.url});setStatus('已交给系统分享；请在分享面板中选择接收人。');}catch(error){if(error instanceof DOMException&&error.name==='AbortError')setStatus('已取消分享；链接仍可复制。');else{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请点击“分享名片”重试，或复制链接。');}}}catch(error){setStatus(error instanceof Error?error.message:'无法准备分享链接。');}finally{setBusy(false);}}
   async function downloadImage(){if(!projection)return;setBusy(true);setStatus('正在生成名片图片…');try{download(await renderImage(projection),'neymi-card.png');setStatus('名片图片已下载。');}catch{setStatus('图片生成失败，请稍后重试。');}finally{setBusy(false);}}
-  function downloadContact(){if(!projection)return;try{download(new Blob([serializeVcard(projection) as BlobPart],{type:'text/vcard;charset=utf-8'}),'neymi-contact.vcf');setStatus('联系人文件已下载，可导入手机通讯录。');}catch{setStatus('联系人文件生成失败，请检查所选内容。');}}
-  async function revoke(record:ShareRecord){if(!record.receipt)return;if(!window.confirm('停止后，这个链接将无法打开。已保存的图片和联系人不会被删除。'))return;setBusy(true);setStatus('正在停止分享…');try{const response=await publicationRequest(`/v1/publications/${encodeURIComponent(record.receipt.publication.publicId)}`,{method:'DELETE',headers:{authorization:`Bearer ${record.receipt.revokeToken}`}});if(!response.ok)throw new Error('停止分享失败，请稍后重试。');commit(records.map(item=>item===record?{...item,revoked:true}:item));setStatus('分享链接已停止。');}catch(error){setStatus(error instanceof Error?error.message:'停止分享失败。');}finally{setBusy(false);}}
-  return <section className="quick-share" aria-labelledby="quick-share-title">
-    <div><h3 id="quick-share-title">分享名片</h3><p>当前：{cardKind==='free'?'Free':'VIP'} 名片 · 已选择 {selectedCount} 项。分享链接会上传这些内容，持有链接的人可以查看，30 天后到期。</p></div>
-    <div className="quick-share-selection" aria-label="本次会分享的内容"><strong>本次分享内容</strong>{selectedItems.length?<ul>{selectedItems.map((item,index)=><li key={`${index}-${item}`}>{item}</li>)}</ul>:<p>还没有可分享的已选内容。</p>}</div>
-    <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button></div>
-    <div className="quick-share-downloads"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>保存名片图片</button><span aria-hidden="true">·</span><button type="button" disabled={busy||!projection||selectedCount===0} onClick={downloadContact}>下载联系人（vCard）</button></div>
+  return <section className={`quick-share${compact?' quick-share-compact':''}`} aria-label="分享名片">
+    {!compact&&<div className="quick-share-summary"><p>已选 {selectedCount} 项 · 分享链接公开可见，30 天后到期。</p></div>}
+    <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>下载名片</button></div>
     {manualCopyUrl&&<label className="quick-share-copy-field">分享链接<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
-    <details className="quick-share-management" open={manageOpen} onToggle={event=>{const open=event.currentTarget.open;setManageOpen(open);if(open)setNow(Date.now());}}><summary>管理分享</summary>{records.filter(record=>record.receipt).length?<div>{records.filter(record=>record.receipt).map(record=><article key={record.receipt!.publication.publicId}><p>{record.kind==='free'?'Free':'VIP'} 名片 · {new Date(record.receipt!.publication.createdAt).toLocaleString()} · {record.revoked?'已停止':now>0&&Date.parse(record.receipt!.publication.expiresAt)<=now?'已过期':`有效期至 ${new Date(record.receipt!.publication.expiresAt).toLocaleDateString()}`}</p><a href={record.receipt!.publication.url} target="_blank" rel="noreferrer">打开链接</a>{!record.revoked&&(!now||Date.parse(record.receipt!.publication.expiresAt)>now)&&<button type="button" disabled={busy} onClick={()=>void revoke(record)}>停止分享</button>}</article>)}</div>:<p>分享名片后，可在这里查看或停止链接。</p>}</details>
     {status&&<p role="status">{status}</p>}
   </section>;
 }

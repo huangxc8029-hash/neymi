@@ -67,7 +67,7 @@ export function StrategyPanel({research,context,facts,profile,deviceId,vault,ini
     catch(error){setStatus(error&&typeof error==='object'&&(error as {code?:string}).code==='PERMISSION_DENIED'?'请先到“我的卡片库”设置或解锁本地加密区，再缓存离线副本。':error instanceof Error?error.message:'加密缓存失败。');}
     finally{setBusy(false);}
   }
-  return <section style={{marginTop:32,borderTop:'1px solid #ddd',paddingTop:24}}>
+  return <section className="strategy-panel">
     <h3>表达方案</h3><p>仅在接收人身份已确认后生成。你选择的本人事实会随本次请求发送；其他本地资料不会发送。</p>
     {facts.length?facts.map(fact=><label key={fact.id} style={{display:'block',margin:'8px 0'}}><input type="checkbox" aria-label={`选择发送事实：${fact.text}`} checked={selectedFacts.includes(fact.id)} onChange={event=>setSelectedFacts(current=>event.target.checked?[...current,fact.id]:current.filter(id=>id!==fact.id))}/>{fact.text}</label>):<p>还没有已确认的本人事实。可先手动添加，或使用更谨慎的无事实方案。</p>}
     <details><summary>查看本次将发送的场景与公开来源</summary><pre style={{whiteSpace:'pre-wrap'}}>{preview}</pre></details>

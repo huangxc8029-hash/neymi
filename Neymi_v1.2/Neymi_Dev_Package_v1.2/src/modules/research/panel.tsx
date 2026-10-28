@@ -47,7 +47,7 @@ export function ResearchPanel({onResearch}:{onResearch?:(research:RecipientResea
     const confirmed={...research,state:'ready' as const,recipient:{...research.recipient,identityStatus:'verified' as const}};
     setResearch(confirmed);if(interaction)onResearch?.(confirmed,interaction);setStatus('已确认接收人身份。');
   }
-  return <section style={{marginTop:56,borderTop:'1px solid #ddd',paddingTop:28}}>
+  return <section className="research-panel">
     <p className="eyebrow">下一步 · 单人公开研究</p><h2>为一位接收人做准备</h2>
     <p>接收人由你提供。公开页面只作为未验证来源；搜索内容中的指令不会执行。</p>
     <label htmlFor="research-kind">接收人信息类型</label>{' '}

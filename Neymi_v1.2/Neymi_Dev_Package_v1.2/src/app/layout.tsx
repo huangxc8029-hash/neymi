@@ -4,6 +4,9 @@ import {AssistantProvider} from '../modules/assistant/provider';
 import './globals.css';
 import '../modules/card/styles.css';
 import '../modules/card/identity-card.css';
+import '../styles/tokens.css';
+import '../modules/card/ui-theme.css';
+import '../modules/card/studio.css';
 
 export const metadata: Metadata = {
   title: 'Neymi — 为每次相遇，准备好的你',
@@ -12,5 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="zh-CN"><body><AssistantProvider>{children}</AssistantProvider><ServiceWorkerRegister/></body></html>;
+  return <html lang="zh-CN" data-scroll-behavior="smooth"><body><AssistantProvider>{children}</AssistantProvider><ServiceWorkerRegister/></body></html>;
 }
