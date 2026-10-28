@@ -19,6 +19,8 @@
 .identity-card .identity-modules button.identity-tile,.studio .identity-card .identity-modules button.identity-tile{display:flex;align-items:center;justify-content:space-between;gap:3cqi;flex:0 0 auto;min-height:30px;min-width:23%;padding:1.5cqi 2cqi;border:1px solid color-mix(in srgb,var(--template-ink),transparent 78%);border-radius:6px;background:color-mix(in srgb,var(--card-surface),transparent 26%);backdrop-filter:blur(8px);box-shadow:none;color:var(--template-ink);animation:none;transform:none;font:inherit}
 .identity-card .identity-tile span{font-size:clamp(10px,1.8cqi,13px);font-weight:500}
 .identity-card .identity-tile svg{width:2cqi;height:2cqi;stroke:currentColor}
+.identity-card .identity-modules button.identity-tile.identity-text-tile{width:max-content;max-width:100%;min-width:0;padding:.8cqi 1.2cqi;border:0;border-radius:0;background:none;backdrop-filter:none;box-shadow:none}
+.identity-card.card-language .identity-modules button.identity-tile.identity-text-tile{min-width:0!important;padding:.8cqi 1.2cqi!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;backdrop-filter:none!important}
 .identity-signature{position:absolute;right:5.5%;bottom:1.5%;display:flex;align-items:baseline;gap:1cqi;color:var(--template-ink);opacity:.48;pointer-events:none;white-space:nowrap}
 .identity-signature>span{font-size:clamp(10px,2.15cqi,16px);font-weight:600;letter-spacing:-.03em}
 .identity-signature small{font-size:clamp(6px,1.25cqi,9px);font-weight:400;letter-spacing:.02em}

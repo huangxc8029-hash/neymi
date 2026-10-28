@@ -1,0 +1,48 @@
+import {expect,test} from '@playwright/test';
+
+test.skip(!process.env.NEYMI_LIVE_AI_E2E,'Set NEYMI_LIVE_AI_E2E=1 to run the real-model flow against a disposable test database.');
+test.setTimeout(120_000);
+
+test('real model builds an evidence-confirmed card, publishes it, and the test revokes it',async({page,request})=>{
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto('/');
+  await page.getByRole('button',{name:/AI 名片助理/}).click();
+  await page.getByLabel('告诉 AI 名片助理').fill('我叫林予安，职位是产品顾问。这张名片用于商务合作，面向产品团队负责人。我最希望对方记住：我擅长把复杂需求转成清晰的产品方案。');
+  await page.getByRole('button',{name:'发送',exact:true}).click();
+  const candidates=page.getByRole('region',{name:'确认名片亮点'});
+  await expect(candidates).toBeVisible({timeout:90_000});
+  await expect(candidates).toContainText('把复杂需求转成清晰的产品方案');
+  await candidates.getByRole('checkbox',{name:/擅长把复杂需求转成清晰的产品方案/}).check();
+  await page.getByRole('button',{name:'生成名片预览'}).click();
+  await expect(page.getByRole('button',{name:'打开名片预览并确认显示内容'})).toBeVisible({timeout:90_000});
+  await expect(page.locator('.designer-proposal-card').last()).toContainText('把复杂需求转成清晰的产品方案');
+  const rewrites=page.locator('.designer-rewrite-confirm input:not(:disabled)');
+  for(let index=0;index<await rewrites.count();index++)await rewrites.nth(index).check();
+  await page.addStyleTag({content:'nextjs-portal{display:none!important}'});
+  await page.screenshot({path:'docs/verification/2026-10-27-purple-ui/studio-ai-proposal-desktop.png',fullPage:true});
+  await page.getByRole('button',{name:'打开名片预览并确认显示内容'}).click();
+  await expect(page.locator('.guided-draft-notice')).toContainText('已保存');
+  await expect(page.getByRole('button',{name:'复制链接'})).toBeEnabled();
+  await page.waitForTimeout(1800);
+  await page.addStyleTag({content:'nextjs-portal{display:none!important}'});
+  await page.screenshot({path:'docs/verification/2026-10-27-purple-ui/studio-ai-desktop.png',fullPage:true});
+  await page.getByRole('button',{name:'复制链接'}).click();
+  await expect(page.locator('.quick-share [role="status"]')).toContainText(/链接已复制|链接已准备好/,{timeout:45_000});
+  const receipt=await page.evaluate(()=>{const records=JSON.parse(localStorage.getItem('neymi.share-links.v1')||'[]') as Array<{receipt?:{publication?:{publicId?:string};revokeToken?:string}}>;return records.find(record=>record.receipt?.publication?.publicId&&record.receipt.revokeToken)?.receipt;});
+  expect(receipt?.publication?.publicId).toBeTruthy();
+  const published=await request.get(`/v1/publications/${receipt!.publication!.publicId}`);
+  expect(published.status()).toBe(200);
+  const publishedBody=await published.json() as {projection?:{identity?:Record<string,string>;modules?:Array<{items?:Array<{value?:string}>}>}};
+  expect(publishedBody.projection?.identity?.name).toBe('林予安');
+  expect(JSON.stringify(publishedBody.projection)).toContain('把复杂需求转成清晰的产品方案');
+  expect((await request.get(`/p/${receipt!.publication!.publicId}`)).status()).toBe(200);
+  await page.goto(`/p/${receipt!.publication!.publicId}`);await expect(page.getByRole('region',{name:'公开名片'})).toBeVisible();
+  await page.addStyleTag({content:'nextjs-portal{display:none!important}'});
+  await page.screenshot({path:'docs/verification/2026-10-27-purple-ui/public-card-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:'docs/verification/2026-10-27-purple-ui/public-card-mobile.png'});
+  const revokeStatus=await page.evaluate(async({id,token})=>(await fetch(`/v1/publications/${id}`,{method:'DELETE',headers:{authorization:`Bearer ${token}`}})).status,{id:receipt!.publication!.publicId,token:receipt!.revokeToken});
+  expect(revokeStatus).toBe(200);
+  const publicRead=await request.get(`/v1/publications/${receipt!.publication!.publicId}`);
+  expect(publicRead.status()).toBe(404);
+});

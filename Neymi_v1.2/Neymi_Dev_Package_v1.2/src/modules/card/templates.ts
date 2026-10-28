@@ -5,6 +5,7 @@ type OpeningEffect='soft-reveal'|'pixel-wake'|'ink-unfold'|'chrome-sheen'|'poste
 type CardTemplate={id:string;name:string;description:string;start:string;end:string;ink:string;muted:string;accent:string;image:string;
   series:'classic'|'mosaic'|'dopamine'|'anime'|'pixel'|'oriental'|'y2k'|'graffiti'|'scrapbook'|'cyber';seriesLabel:string;availability:'free'|'pro';layout:Layout;moduleShell:'glass'|'mosaic'|'sticker'|'panel';pattern:string;openingEffect?:OpeningEffect;legacy?:boolean};
 export const CARD_TEMPLATES=[
+  {id:'soft-signal',name:'Soft Signal',description:'纸白留白 · 柔紫点睛',start:'#ffffff',end:'#f5f2fc',ink:'#24212e',muted:'#696474',accent:'#6750c8',image:'',series:'classic',seriesLabel:'基础',availability:'free',layout:'editorial',moduleShell:'glass',pattern:'soft-signal'},
   {id:'paper',name:'极简白',description:'纯白 · 银灰',start:'#ffffff',end:'#edf0f3',ink:'#17191d',muted:'#51565e',accent:'#444b56',image:'',series:'classic',seriesLabel:'基础',availability:'free',layout:'editorial',moduleShell:'glass',pattern:'classic-paper'},
   {id:'midnight',name:'航天黑',description:'曜黑 · 冷银',start:'#090b0e',end:'#181c22',ink:'#f7f8fa',muted:'#c0c6ce',accent:'#d3dbe5',image:'',series:'classic',seriesLabel:'基础',availability:'free',layout:'editorial',moduleShell:'glass',pattern:'classic-midnight'},
   {id:'evergreen',name:'松林',description:'深绿 · 林间雾',start:'#071e19',end:'#153a2e',ink:'#f2f7ee',muted:'#c5d9cc',accent:'#d6e7b9',image:'/card-backgrounds/forest.png',series:'classic',seriesLabel:'基础',availability:'free',layout:'editorial',moduleShell:'glass',pattern:'classic-evergreen'},
@@ -34,7 +35,7 @@ const registeredTemplates=CARD_TEMPLATES as readonly CardTemplate[];
 export const CARD_TEMPLATE_REGISTRY:Readonly<Record<CardTemplateId,RegisteredCardTemplate>>=Object.fromEntries(CARD_TEMPLATES.map(template=>[template.id,template])) as Record<CardTemplateId,RegisteredCardTemplate>;
 export const FREE_CARD_TEMPLATES=registeredTemplates.filter(template=>template.availability==='free') as RegisteredCardTemplate[];
 export const PRO_CARD_TEMPLATES=registeredTemplates.filter(template=>template.availability==='pro'&&!template.legacy) as RegisteredCardTemplate[];
-export const DEFAULT_CARD_TEMPLATE:CardTemplateId='evergreen';
+export const DEFAULT_CARD_TEMPLATE:CardTemplateId='soft-signal';
 
 export function isCardTemplateId(value:string|undefined|null):value is CardTemplateId{return value!==null&&value!==undefined&&value in CARD_TEMPLATE_REGISTRY;}
 export function resolveCardTemplateId(value:string|undefined|null):CardTemplateId{return value==='plain'||!isCardTemplateId(value)?DEFAULT_CARD_TEMPLATE:value;}
@@ -43,6 +44,7 @@ export function cardTemplateClass(value:string|undefined|null){return `template-
 
 function patternFor(template:CardTemplate){
   const {start,end,accent}=template;
+  if(template.pattern==='soft-signal')return `linear-gradient(135deg,transparent 0 82%,${accent} 82% 83%,transparent 83%),radial-gradient(ellipse at 100% 0%,#eee9fc 0 22%,transparent 22.5%),linear-gradient(135deg,${start},${end})`;
   if(template.pattern==='porcelain')return `linear-gradient(135deg,transparent 0 34%,${accent}44 34% 36%,transparent 36% 65%,${end}99 65% 67%,transparent 67%),linear-gradient(40deg,${start},${end})`;
   if(template.pattern==='glass')return `conic-gradient(from 30deg at 72% 32%,${accent}88 0 17%,transparent 17% 35%,${end}bb 35% 51%,transparent 51% 70%,${accent}44 70% 82%,transparent 82%),linear-gradient(130deg,${start},${end})`;
   if(template.pattern==='memories')return `repeating-linear-gradient(135deg,${accent}18 0 2px,transparent 2px 42px),linear-gradient(120deg,${start},${end})`;
