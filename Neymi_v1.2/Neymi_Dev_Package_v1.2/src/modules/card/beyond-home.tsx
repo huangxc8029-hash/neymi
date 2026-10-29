@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import {AccountEntry} from '../auth/account-entry';
+import {MobileNavigation} from './mobile-navigation';
 
 export function BeyondHome(){
   return <main className="workspace beyond-page">
@@ -12,6 +13,6 @@ export function BeyondHome(){
       <p className="beyond-flow-note">第二步可以单独开始；本人事实会帮助你准备更贴近实际的介绍。</p>
     </section>
     <footer className="site-footer"><span>信息由你确认 · 分享由你决定</span><Link href="/cards">我的卡片库</Link></footer>
-    <nav className="mobile-work-nav" aria-label="主要功能"><Link href="/"><span aria-hidden="true">✦</span>制作名片</Link><Link href="/beyond" aria-current="page"><span aria-hidden="true">◇</span>Beyond 名片</Link><Link href="/cards"><span aria-hidden="true">▤</span>我的卡片库</Link></nav>
+    <MobileNavigation active="beyond"/>
   </main>;
 }

@@ -14,6 +14,7 @@ import {getCardTemplate,resolveCardTemplateId} from './templates';
 import {projectShare} from '../sharing/projection';
 import {serializeNcard} from '../sharing/export';
 import {GuidedCardStore,type GuidedCardRecord} from './guided-store';
+import {MobileNavigation} from './mobile-navigation';
 
 type LibraryTab='own'|'received';
 const demoRecipientCards=[
@@ -73,6 +74,6 @@ export function CardLibrary({initialTab='own'}:{initialTab?:LibraryTab}){
         {!unlocked?<UnlockPanel vault={vault} initialized={initialized} onUnlocked={()=>{setInitialized(true);setUnlocked(true);void loadOffline();}}/>:<><button type="button" onClick={()=>void loadOffline()}>刷新加密副本</button>{drafts.map(draft=><article key={draft.id}><CardRenderer draft={draft}/></article>)}</>}
       </details>
     </section>}
-    <footer className="site-footer">本机保存 · 分享前逐项确认</footer>
+    <footer className="site-footer">本机保存 · 分享前逐项确认</footer><MobileNavigation active="cards"/>
   </main>;
 }

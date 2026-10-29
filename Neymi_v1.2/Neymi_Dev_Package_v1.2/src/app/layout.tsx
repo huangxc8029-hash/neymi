@@ -7,6 +7,7 @@ import '../modules/card/identity-card.css';
 import '../styles/tokens.css';
 import '../modules/card/ui-theme.css';
 import '../modules/card/studio.css';
+import '../modules/card/onboarding.css';
 
 export const metadata: Metadata = {
   title: 'Neymi — 为每次相遇，准备好的你',

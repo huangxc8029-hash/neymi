@@ -13,6 +13,8 @@ import {QuickShare} from '../modules/publication/quick-share';
 import {TemplatePicker} from '../modules/card/template-picker';
 import {DEFAULT_CARD_TEMPLATE,PRO_CARD_TEMPLATES,getCardTemplate,isCardTemplateId,type CardTemplateId} from '../modules/card/templates';
 import {CardVisibilityPanel,type CardVisibilitySelection} from '../modules/card/visibility-panel';
+import {OnboardingModal} from '../modules/card/onboarding-modal';
+import {MobileNavigation} from '../modules/card/mobile-navigation';
 import {IndexedDbVaultStorage} from '../modules/vault/storage';
 import {createVault} from '../modules/vault/vault';
 import {PreparedStore} from '../modules/prepared/store';
@@ -75,7 +77,7 @@ export default function Home(){
   const [guidedVisibility,setGuidedVisibility]=useState<CardVisibilitySelection>(()=>defaultVisibility(initial));
   const [profileLoaded,setProfileLoaded]=useState(false);
   const [motion,setMotion]=useState<Motion>('float');
-  const [mobilePane,setMobilePane]=useState<'edit'|'preview'>('edit');
+  const [mobilePreviewOpen,setMobilePreviewOpen]=useState(false);
   const {openAssistant,registerStudioApply,registerStudioNavigate}=useAssistant();
   const editorColumnRef=useRef<HTMLDivElement>(null),shareSectionRef=useRef<HTMLDivElement>(null);
   const [saveStatus,setSaveStatus]=useState('');
@@ -124,16 +126,16 @@ export default function Home(){
     await new GuidedCardStore(vault.storage).save(record);
     setGuidedDraft(draft);setGuidedVisibility(selection);
     try{window.localStorage.setItem(templateStorageKey,proposal.templateId);window.dispatchEvent(new Event(templateChangeEvent));}catch{}
-    setPreviewCard('free');setActiveEditorStep('visibility');setMobilePane('preview');
+    setPreviewCard('free');setActiveEditorStep('visibility');setMobilePreviewOpen(true);
   }),[registerStudioApply,profile,vault]);
   const navigateStudio=useCallback((request:StudioNavigationRequest)=>{
     setActiveEditorStep(request.step);
-    if(request.target==='share'){setMobilePane('preview');setShareNavigation(value=>value+1);return;}
-    setMobilePane('edit');requestAnimationFrame(()=>editorColumnRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
+    if(request.target==='share'){setMobilePreviewOpen(true);setShareNavigation(value=>value+1);return;}
+    setMobilePreviewOpen(false);requestAnimationFrame(()=>editorColumnRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
   },[]);
   useEffect(()=>registerStudioNavigate(navigateStudio),[navigateStudio,registerStudioNavigate]);
-  useEffect(()=>{if(!shareNavigation)return;requestAnimationFrame(()=>shareSectionRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'}));},[shareNavigation,mobilePane]);
-  const showShare=useCallback(()=>{setMobilePane('preview');setShareNavigation(value=>value+1);},[]);
+  useEffect(()=>{if(!shareNavigation)return;requestAnimationFrame(()=>shareSectionRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'}));},[shareNavigation]);
+  const showShare=useCallback(()=>{setMobilePreviewOpen(true);setShareNavigation(value=>value+1);},[]);
   async function chooseTemplate(templateId:CardTemplateId){
     try{window.localStorage.setItem(templateStorageKey,templateId);window.dispatchEvent(new Event(templateChangeEvent));setPreviewCard('free');}catch{}
   }
@@ -144,12 +146,12 @@ export default function Home(){
     try{window.localStorage.setItem(freeVisibilityStorageKey,JSON.stringify(value));window.localStorage.setItem(vipVisibilityStorageKey,JSON.stringify(value));window.localStorage.setItem(vipModulesStorageKey,JSON.stringify(value.modules));}catch{}
   }
   return <main className="workspace">
+    <OnboardingModal/>
     <header className="site-header studio-app-header"><Link className="wordmark" href="/" aria-label="Neymi 首页">neymi<span aria-hidden="true">.</span></Link>
       <nav className="site-nav studio-global-nav" aria-label="主要功能"><Link href="/" aria-current="page">制作名片</Link><Link href="/beyond">Beyond</Link><Link href="/cards">我的卡片库</Link></nav>
       <nav className="site-nav studio-account-nav" aria-label="账户与助手"><span className="local-status"><span/>本机已保存</span><button type="button" className="studio-ai-open" onClick={()=>openAssistant()}>✦ AI 名片助理</button><AccountEntry/></nav>
     </header>
-    <div className={`studio studio-workspace${mobilePane==='preview'?' mobile-preview-active':''}`} id="card-form" data-active-step={activeEditorStep} data-mobile-pane={mobilePane}>
-      <div className="mobile-studio-view-switch" role="group" aria-label="切换名片编辑或预览"><button type="button" aria-pressed={mobilePane==='edit'} onClick={()=>setMobilePane('edit')}>编辑</button><button type="button" aria-pressed={mobilePane==='preview'} onClick={()=>setMobilePane('preview')}>预览</button></div>
+    <div className={`studio studio-workspace${mobilePreviewOpen?' mobile-preview-open':''}`} id="card-form" data-active-step={activeEditorStep} data-mobile-preview={mobilePreviewOpen?'open':'closed'}>
       <div className="editor-column" ref={editorColumnRef}>{guidedDraft&&<div className="guided-draft-notice" role="status"><span>正在预览已保存的 AI 名片草稿</span><button type="button" onClick={()=>setGuidedDraft(null)}>回到手动名片</button></div>}<CardEditor profile={profile} onChange={next=>{setGuidedDraft(null);updateProfile(next);}} motion={motion} onMotion={setMotion} activeStep={activeEditorStep} onStepChange={setActiveEditorStep} saveStatus={saveStatus} onShareRequested={showShare}
         freeTemplateContent={<TemplatePicker selected={selectedTemplate} onSelect={chooseTemplate} mode="free"/>}
         vipTemplateContent={<TemplatePicker selected={selectedVipTemplate} onSelect={chooseVipTemplate} mode="pro"/>}
@@ -158,13 +160,16 @@ export default function Home(){
         visibilityContent={<CardVisibilityPanel profile={previewProfile} contacts={guidedDraft?[]:privateContacts} logoAvailable={guidedDraft?false:Boolean(logo)} activeCard={previewCard} freeSelection={guidedDraft?guidedVisibility:freeVisibility} vipSelection={guidedDraft?guidedVisibility:vipVisibility} onCardChange={setPreviewCard} onSelectionChange={updateVisibility} singleList inline hideHeading/>}
         /></div>
       <aside className="preview-panel" data-preview-device={previewDevice}>
+        <div className="mobile-preview-sheet-heading"><span className="mobile-preview-grabber" aria-hidden="true"/><div className="mobile-preview-sheet-title"><div><h2>你的名片</h2><p><span className="mobile-preview-live-dot"/>实时同步 · 输入即更新</p></div><button type="button" aria-expanded={mobilePreviewOpen} aria-label={mobilePreviewOpen?'收起名片预览':'展开名片预览'} onClick={()=>setMobilePreviewOpen(value=>!value)}>{mobilePreviewOpen?'收起':'预览'}<span aria-hidden="true">{mobilePreviewOpen?'⌄':'⌃'}</span></button></div></div>
         <div className="preview-heading"><div><h2>你的名片</h2><p>{visibleDraft?'实时预览 · 更改后即时更新':'填写展示名称后，名片会显示在这里。'}</p></div><div className="preview-device-switch" role="group" aria-label="预览尺寸"><button type="button" aria-pressed={previewDevice==='desktop'} onClick={()=>setPreviewDevice('desktop')}>桌面</button><button type="button" aria-pressed={previewDevice==='mobile'} onClick={()=>setPreviewDevice('mobile')}>手机</button></div></div>
         {visibleDraft?<CardRenderer draft={visibleDraft} visibleIdentityFields={activeVisibility.identity} visibleFieldIds={activeVisibility.fields.map(fieldKey)} visibleContactIds={activeVisibility.contacts} showLogo={activeVisibility.logo}/>:<div className="preview-empty"><span aria-hidden="true">✦</span><p>填写展示名称后，名片会显示在这里。</p></div>}
         <div className="preview-caption">每次修改，即时呈现</div>
         <section className="studio-preview-share" id="studio-share-final" ref={shareSectionRef} aria-label="完成并分享">{visibleDraft&&activeShareSelection?<QuickShare draft={visibleDraft} selection={activeShareSelection} cardKind={previewCard} compact/>:<p className="share-empty">填写展示名称后即可分享。</p>}</section>
       </aside>
+      {!mobilePreviewOpen&&<button type="button" className="mobile-preview-launcher" aria-label="预览名片" title="预览名片" onClick={()=>setMobilePreviewOpen(true)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><circle cx="9" cy="11" r="1.5"/><path d="M6.5 15.5c.7-1.2 1.5-1.8 2.5-1.8s1.8.6 2.5 1.8M14 10h4M14 13h4"/></svg></button>}
+      <button type="button" className="mobile-preview-backdrop" tabIndex={mobilePreviewOpen?0:-1} aria-label="收起名片预览" onClick={()=>setMobilePreviewOpen(false)}/>
     </div>
-    <nav className="mobile-work-nav" aria-label="主要功能"><Link href="/" aria-current="page"><span aria-hidden="true">✦</span>制作名片</Link><Link href="/beyond"><span aria-hidden="true">◇</span>Beyond 名片</Link><Link href="/cards"><span aria-hidden="true">▤</span>我的卡片库</Link></nav>
+    <MobileNavigation active="home"/>
     <footer className="site-footer"><span>免注册 · 本地优先 · 分享由你决定</span><Link href="/cards?tab=received">查看收到的卡片</Link></footer>
   </main>;
 }
