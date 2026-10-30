@@ -1,5 +1,6 @@
 'use client';
 import {useMemo,useState,useSyncExternalStore} from 'react';
+import Link from 'next/link';
 import type {PublicationReceipt,ShareSelection} from '../../domain/types';
 import {publicationReceiptSchema} from '../../domain/schemas';
 import {confirmShare,digestProjection} from '../sharing/confirmation';
@@ -119,7 +120,7 @@ export function QuickShare({draft,selection,cardKind,compact=false}:{draft:Local
   return <section className={`quick-share${compact?' quick-share-compact':''}`} aria-label="分享名片">
     {!compact&&<div className="quick-share-summary"><p>已选 {selectedCount} 项 · 普通链接 30 天到期，长期链接约 5 年有效且可更新。分享内容为公开快照，第三方可能缓存。</p></div>}
     <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLongLink()}>长期链接（5年）</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareWhatsApp()}>WhatsApp</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>微信图片 / 下载名片</button></div>
-    {longRecord?.receipt&&<div className="quick-share-long-management"><p>长期链接的撤回码仅保存在此浏览器，清除浏览器数据可能失去撤回权限。请先备份撤回码。</p><button type="button" disabled={busy} onClick={()=>void copyRevokeCode()}>复制撤回码</button><button type="button" disabled={busy} onClick={()=>void revokeLong()}>撤回长期链接</button></div>}
+    {longRecord?.receipt&&<div className="quick-share-long-management"><p>长期链接的撤回码仅保存在此浏览器，清除浏览器数据可能失去撤回权限。请先备份撤回码。</p><button type="button" disabled={busy} onClick={()=>void copyRevokeCode()}>复制撤回码</button><button type="button" disabled={busy} onClick={()=>void revokeLong()}>撤回长期链接</button><Link href="/revoke">其他设备撤回</Link></div>}
     {manualCopyUrl&&<label className="quick-share-copy-field">链接或撤回码<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
     {status&&<p role="status">{status}</p>}
   </section>;
