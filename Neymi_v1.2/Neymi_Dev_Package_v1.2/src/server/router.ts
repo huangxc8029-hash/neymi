@@ -30,7 +30,7 @@ const moduleProposalsInputSchema=z.strictObject({context:z.unknown(),segments:z.
 const researchInputSchema=z.strictObject({input:z.unknown(),context:z.unknown()});
 const confirmIdentitySchema=z.strictObject({candidateId:z.string().min(1).max(128)});
 const planInputSchema=z.strictObject({context:z.unknown(),research:z.unknown(),approvedContext:z.unknown()});
-const publicationInputSchema=z.strictObject({projection:z.unknown(),confirmation:z.unknown()});
+const publicationInputSchema=z.strictObject({projection:z.unknown(),confirmation:z.unknown(),lifetime:z.enum(['temporary','long']).optional()});
 const activitySourceInputSchema=z.strictObject({url:z.string().url().max(2048)});
 const activityPlanInputSchema=z.strictObject({eventId:z.string().min(1).max(128),context:z.unknown(),approvedContext:z.unknown(),researches:z.array(z.unknown()).min(1).max(20)});
 const handoffInputSchema=z.strictObject({publicationId:z.string().regex(/^[A-Za-z0-9_-]{16,64}$/)});
@@ -208,11 +208,19 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const key=request.headers.get('idempotency-key')??'';
       const input=publicationInputSchema.parse(await readJson(request,8*1024*1024));
       const service=getPublicationService(new URL(request.url).origin);
-      return json(await service.publishCard(owner,input.projection as never,input.confirmation as never,key),201,{'Cache-Control':'no-store'});
+      return json(await service.publishCard(owner,input.projection as never,input.confirmation as never,key,new Date().toISOString(),input.lifetime??'temporary'),201,{'Cache-Control':'no-store'});
     }
     if(path.startsWith('publications/')&&segments.length===2){
       const id=segments[1],service=getPublicationService(new URL(request.url).origin);
       if(request.method==='GET')return json({projection:await service.readPublication(id)},200,{'Cache-Control':'no-store, max-age=0'});
+      if(request.method==='PATCH'){
+        if(!originOk(request))throw invalidRequest('Invalid origin');
+        const authorization=request.headers.get('authorization')??'';
+        if(!authorization.startsWith('Bearer '))throw invalidRequest('Missing revocation token');
+        const input=publicationInputSchema.parse(await readJson(request,8*1024*1024));
+        await service.updatePublication(id,authorization.slice(7),input.projection as never,input.confirmation as never);
+        return json({ok:true},200,{'Cache-Control':'no-store'});
+      }
       if(request.method==='DELETE'){
         if(!originOk(request))throw invalidRequest('Invalid origin');
         const authorization=request.headers.get('authorization')??'';

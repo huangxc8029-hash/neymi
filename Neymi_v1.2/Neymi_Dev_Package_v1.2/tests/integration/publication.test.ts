@@ -51,4 +51,18 @@ describe('deliberate publication lifecycle',()=>{
       secondStore.close();
     }finally{rmSync(directory,{recursive:true,force:true});}
   });
+  it('updates a long-lived link in place and enforces revocation authority',async()=>{
+    const{value,projection,confirmation}=await setup();
+    const receipt=await value.publishCard('owner_a',projection,confirmation,'f'.repeat(40),now,'long');
+    expect(Date.parse(receipt.publication.expiresAt)).toBeGreaterThan(Date.parse('2030-01-01'));
+    const edited={...projection,identity:{...projection.identity,name:'Revised Owner'}};
+    const editedProof=await confirmShare(edited,'publish');editedProof.confirmedAt=now;
+    await expect(value.updatePublication(receipt.publication.publicId,'invalid',edited,editedProof,now)).rejects.toMatchObject({code:'PERMISSION_DENIED'});
+    await value.updatePublication(receipt.publication.publicId,receipt.revokeToken,edited,editedProof,now);
+    expect((await value.readPublication(receipt.publication.publicId,now)).identity.name).toBe('Revised Owner');
+    await value.revokePublication(receipt.publication.publicId,receipt.revokeToken,now);
+    await expect(value.readPublication(receipt.publication.publicId,now)).rejects.toMatchObject({code:'NOT_FOUND'});
+    await expect(value.updatePublication(receipt.publication.publicId,receipt.revokeToken,edited,editedProof,now)).rejects.toMatchObject({code:'NOT_FOUND'});
+  });
+
 });

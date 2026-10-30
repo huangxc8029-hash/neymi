@@ -11,6 +11,7 @@ import '../modules/card/onboarding.css';
 
 export const metadata: Metadata = {
   title: 'Neymi — 为每次相遇，准备好的你',
+  metadataBase: new URL(process.env.NEYMI_PUBLIC_ORIGIN || 'https://swtpic.com'),
   description: '面向不同接收人的个性化数字名片。',
   manifest: '/manifest.webmanifest',
 };

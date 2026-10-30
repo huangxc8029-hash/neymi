@@ -3,6 +3,7 @@ import {mkdirSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import type {ShareProjection} from '../../domain/types';
 import {unavailable} from '../../server/errors';
+import {SupabasePublicationStore} from './supabase-store';
 
 export type StoredPublication={publicId:string;ownerId:string;projection:ShareProjection|null;digest:string;revokeHash:string;idempotencyKey:string;createdAt:string;expiresAt:string;revokedAt?:string};
 export interface PublicationStore{
@@ -11,6 +12,8 @@ export interface PublicationStore{
   create(record:StoredPublication):Promise<void>;
   revoke(publicId:string,at:string):Promise<void>;
   expireBefore(now:string):Promise<number>;
+  update(publicId:string,projection:ShareProjection,digest:string,now:string):Promise<boolean>;
+  close():void;
 }
 
 export class MemoryPublicationStore implements PublicationStore{
@@ -20,6 +23,8 @@ export class MemoryPublicationStore implements PublicationStore{
   async create(value:StoredPublication){if(this.records.has(value.publicId)||await this.getByIdempotency(value.ownerId,value.idempotencyKey))throw new Error('Publication uniqueness conflict');this.records.set(value.publicId,structuredClone(value));}
   async revoke(id:string,at:string){const value=this.records.get(id);if(value)value.revokedAt=at;}
   async expireBefore(now:string){let count=0;for(const value of this.records.values())if(value.projection&&Date.parse(value.expiresAt)<=Date.parse(now)){value.projection=null;count++;}return count;}
+  async update(publicId:string,projection:ShareProjection,digest:string,now:string){const record=this.records.get(publicId);if(!record||record.revokedAt||!record.projection||Date.parse(record.expiresAt)<=Date.parse(now))return false;record.projection=structuredClone(projection);record.digest=digest;return true;}
+  close(){}
 }
 
 export class SqlitePublicationStore implements PublicationStore{
@@ -32,8 +37,21 @@ export class SqlitePublicationStore implements PublicationStore{
   async create(value:StoredPublication){this.db.prepare('INSERT INTO publications VALUES(?,?,?,?,?,?,?,?,?)').run(value.publicId,value.ownerId,JSON.stringify(value.projection),value.digest,value.revokeHash,value.idempotencyKey,value.createdAt,value.expiresAt,value.revokedAt??null);}
   async revoke(id:string,at:string){this.db.prepare('UPDATE publications SET revoked_at=COALESCE(revoked_at,?) WHERE public_id=?').run(at,id);}
   async expireBefore(now:string){const result=this.db.prepare('UPDATE publications SET projection_json=NULL WHERE expires_at<=? AND projection_json IS NOT NULL').run(new Date(Date.parse(now)).toISOString());return Number(result.changes);}
+  async update(publicId:string,projection:ShareProjection,digest:string,now:string){const result=this.db.prepare('UPDATE publications SET projection_json=?,digest=? WHERE public_id=? AND revoked_at IS NULL AND projection_json IS NOT NULL AND expires_at>?').run(JSON.stringify(projection),digest,publicId,new Date(now).toISOString());return Number(result.changes)===1;}
   close(){this.db.close();}
 }
 
-let configured:SqlitePublicationStore|undefined;
-export function getConfiguredPublicationStore(){const path=process.env.NEYMI_SQLITE_PATH;if(!path)throw unavailable('Persistent storage is not configured');return configured??=new SqlitePublicationStore(path);}
+let configured:PublicationStore|undefined;
+export function getConfiguredPublicationStore():PublicationStore{
+  if(configured)return configured;
+  if(process.env.NEYMI_PUBLICATION_STORAGE==='supabase'){
+    // Lazy import is intentionally avoided here; this module is server-only.
+    const url=process.env.SUPABASE_URL??process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!url||!key)throw unavailable('Supabase publication storage is not configured');
+    return configured=new SupabasePublicationStore(url,key);
+  }
+  const path=process.env.NEYMI_SQLITE_PATH;
+  if(!path)throw unavailable('Persistent publication storage is not configured');
+  return configured=new SqlitePublicationStore(path);
+}

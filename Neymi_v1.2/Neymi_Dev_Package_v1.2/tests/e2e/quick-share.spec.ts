@@ -15,7 +15,7 @@ test('visibility selection drives the studio preview without publishing',async({
   await company.check();await expect(preview).toContainText('Hidden Company');
   await expect(page.locator('.share-confirmation')).toHaveCount(0);
   await expect(page.getByRole('button',{name:'分享名片'})).toBeVisible();await expect(page.getByRole('button',{name:'复制链接'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'下载名片'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'微信图片 / 下载名片'})).toBeVisible();
 });
 
 test('copy link reuses one public snapshot and omits unselected profile fields',async({page,context})=>{
@@ -42,7 +42,7 @@ test('visibility and final share actions remain usable at desktop and phone widt
     if(width<=760)await page.locator('.mobile-studio-steps summary').click();
     await expect(page.locator('.editor-visibility-step')).toBeVisible();
     if(width<=1023)await page.getByRole('button',{name:'预览'}).click();
-    await expect(page.locator('.preview-panel .quick-share-actions button')).toHaveCount(3);
+    await expect(page.locator('.preview-panel .quick-share-actions button')).toHaveCount(5);
     if(width<=1023){
       await page.getByRole('button',{name:'编辑'}).click();
       await page.locator('.editor-visibility-actions').getByRole('button',{name:'跳过'}).click();
@@ -51,4 +51,47 @@ test('visibility and final share actions remain usable at desktop and phone widt
     }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
+});
+
+
+test('long-lived links update without changing their address and can be revoked',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  let created=0,updated=0,revoked=0,lastProjection:Record<string,unknown>|undefined;
+  const longReceipt={...receipt(),publication:{...receipt().publication,expiresAt:new Date(Date.now()+5*365*24*60*60*1000).toISOString()}};
+  await page.route('**/v1/session',route=>route.request().method()==='GET'
+    ?route.fulfill({status:404,json:{error:{message:'No session'}}})
+    :route.fulfill({status:201,json:{expiresAt:new Date(Date.now()+86400000).toISOString()}}));
+  await page.route('**/v1/publications',async route=>{
+    created++;const payload=route.request().postDataJSON();
+    expect(payload.lifetime).toBe('long');lastProjection=payload.projection;
+    await route.fulfill({status:201,json:longReceipt});
+  });
+  await page.route(`**/v1/publications/${publicId}`,async route=>{
+    const method=route.request().method();
+    if(method==='GET')await route.fulfill({status:200,json:{projection:lastProjection}});
+    else if(method==='PATCH'){
+      updated++;expect(route.request().headers().authorization).toBe(`Bearer ${revokeToken}`);
+      lastProjection=route.request().postDataJSON().projection;
+      await route.fulfill({status:200,json:{ok:true}});
+    }else if(method==='DELETE'){
+      revoked++;expect(route.request().headers().authorization).toBe(`Bearer ${revokeToken}`);
+      await route.fulfill({status:200,json:{ok:true}});
+    }
+  });
+  await page.goto('/');
+  await page.getByRole('textbox',{name:'展示名称'}).fill('First Identity');
+  await page.getByRole('button',{name:'长期链接（5年）'}).click();
+  await expect(page.locator('.quick-share [role="status"]')).toContainText('长期名片链接已复制');
+  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(`${baseUrl}/p/${publicId}`);
+  expect(created).toBe(1);
+  await expect(page.getByRole('button',{name:'复制撤回码'})).toBeVisible();
+  await page.getByRole('textbox',{name:'展示名称'}).fill('Updated Identity');
+  await page.getByRole('button',{name:'长期链接（5年）'}).click();
+  await expect(page.locator('.quick-share [role="status"]')).toContainText('长期名片链接已复制');
+  expect(created).toBe(1);expect(updated).toBe(1);
+  expect(JSON.stringify(lastProjection)).toContain('Updated Identity');
+  page.on('dialog',dialog=>void dialog.accept());
+  await page.getByRole('button',{name:'撤回长期链接'}).click();
+  await expect(page.locator('.quick-share [role="status"]')).toContainText('长期链接已撤回');
+  expect(revoked).toBe(1);
 });
