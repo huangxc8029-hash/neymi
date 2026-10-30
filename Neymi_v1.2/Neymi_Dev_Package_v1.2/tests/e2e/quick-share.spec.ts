@@ -15,7 +15,7 @@ test('visibility selection drives the studio preview without publishing',async({
   await company.check();await expect(preview).toContainText('Hidden Company');
   await expect(page.locator('.share-confirmation')).toHaveCount(0);
   await expect(page.getByRole('button',{name:'分享名片'})).toBeVisible();await expect(page.getByRole('button',{name:'复制链接'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'下载名片'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'微信图片 / 下载名片'})).toBeVisible();
 });
 
 test('copy link reuses one public snapshot and omits unselected profile fields',async({page,context})=>{
@@ -42,7 +42,7 @@ test('visibility and final share actions remain usable at desktop and phone widt
     if(width<=760)await page.locator('.mobile-studio-steps summary').click();
     await expect(page.locator('.editor-visibility-step')).toBeVisible();
     if(width<=1023)await page.getByRole('button',{name:'预览'}).click();
-    await expect(page.locator('.preview-panel .quick-share-actions button')).toHaveCount(3);
+    await expect(page.locator('.preview-panel .quick-share-actions button')).toHaveCount(5);
     if(width<=1023){
       await page.getByRole('button',{name:'编辑'}).click();
       await page.locator('.editor-visibility-actions').getByRole('button',{name:'跳过'}).click();
