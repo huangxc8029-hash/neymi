@@ -13,6 +13,7 @@ export interface PublicationStore{
   revoke(publicId:string,at:string):Promise<void>;
   expireBefore(now:string):Promise<number>;
   update(publicId:string,projection:ShareProjection,digest:string,now:string):Promise<boolean>;
+  close():void;
 }
 
 export class MemoryPublicationStore implements PublicationStore{
@@ -23,6 +24,7 @@ export class MemoryPublicationStore implements PublicationStore{
   async revoke(id:string,at:string){const value=this.records.get(id);if(value)value.revokedAt=at;}
   async expireBefore(now:string){let count=0;for(const value of this.records.values())if(value.projection&&Date.parse(value.expiresAt)<=Date.parse(now)){value.projection=null;count++;}return count;}
   async update(publicId:string,projection:ShareProjection,digest:string,now:string){const record=this.records.get(publicId);if(!record||record.revokedAt||!record.projection||Date.parse(record.expiresAt)<=Date.parse(now))return false;record.projection=structuredClone(projection);record.digest=digest;return true;}
+  close(){}
 }
 
 export class SqlitePublicationStore implements PublicationStore{
