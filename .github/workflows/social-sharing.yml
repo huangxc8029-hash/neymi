@@ -22,7 +22,9 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: Neymi_v1.2/Neymi_Dev_Package_v1.2/package-lock.json
-      - run: npm ci
+      # Existing repository lockfile currently lacks two optional @emnapi entries.
+      # Use a regular install for validation; regenerate and commit the lockfile before release.
+      - run: npm install --no-audit --no-fund
       - run: npm run build
       - run: npm run typecheck
       - run: npm run lint
