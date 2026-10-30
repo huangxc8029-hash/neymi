@@ -72,10 +72,11 @@ export class SupabasePublicationStore implements PublicationStore {
     return data?.length ?? 0;
   }
 
-  async update(publicId: string, projection: StoredPublication['projection'], digest: string): Promise<void> {
+  async update(publicId: string, projection: StoredPublication['projection'], digest: string, now: string): Promise<boolean> {
     const {data, error} = await this.table().update({projection_json: projection, digest})
-      .eq('public_id', publicId).is('revoked_at', null)
-      .gt('expires_at', new Date().toISOString()).select('public_id').maybeSingle();
-    if (error || !data) throw unavailable('Could not update public card');
+      .eq('public_id', publicId).is('revoked_at', null).not('projection_json', 'is', null)
+      .gt('expires_at', now).select('public_id').maybeSingle();
+    if (error) throw unavailable('Could not update public card');
+    return Boolean(data);
   }
 }
