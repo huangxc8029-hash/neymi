@@ -35,6 +35,8 @@ export class SupabasePublicationStore implements PublicationStore {
 
   private table() { return this.client.from('neymi_publications'); }
 
+  close() { /* Remote connection is managed by Supabase HTTP client. */ }
+
   async get(publicId: string): Promise<StoredPublication | undefined> {
     const {data, error} = await this.table().select('*').eq('public_id', publicId).maybeSingle();
     if (error) throw unavailable('Publication storage unavailable');
