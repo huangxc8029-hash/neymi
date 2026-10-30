@@ -8,8 +8,8 @@ This change adds personalized Open Graph and Twitter metadata for consented publ
 2. Ensure `NEYMI_PUBLICATION_SECRET` is stable and `NEYMI_SQLITE_PATH` points to durable storage on an actual persistent server; **Vercel functions cannot persist this SQLite database**. Use the included Supabase/Postgres adapter and SQL migration before enabling publishing on Vercel.
 3. If using Supabase storage, apply `docs/sql/neymi_publications.sql` in the trusted Supabase SQL editor. Set `NEYMI_PUBLICATION_STORAGE=supabase`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` only in server-only environment variables. Never prefix the service-role key with `NEXT_PUBLIC_`.
 4. Data from an existing SQLite database is **not automatically migrated**. Do not switch backends if live snapshots exist without first exporting/importing them.
-5. Public previews are intentionally based only on fields chosen for publication. The public ID is unguessable but anyone with the link can access the published snapshot. Messaging apps may cache preview images after revocation.
-6. For WeChat, the PNG-sharing option is a fallback. Custom WeChat link cards require a separately configured, eligible WeChat JS-SDK integration and real-device tests.
+5. Test cross-device revocation at `/revoke` with the backed-up revoke token, without exposing the token in URL query strings.\n6. Public previews are intentionally based only on fields chosen for publication. The public ID is unguessable but anyone with the link can access the published snapshot. Messaging apps may cache preview images after revocation.
+7. For WeChat, the PNG-sharing option is a fallback. Custom WeChat link cards require a separately configured, eligible WeChat JS-SDK integration and real-device tests.
 
 ## Verify before merging
 
