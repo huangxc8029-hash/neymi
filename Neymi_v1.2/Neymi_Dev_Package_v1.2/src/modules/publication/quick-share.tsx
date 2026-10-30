@@ -23,6 +23,7 @@ function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),anc
 export function QuickShare({draft,selection,cardKind,compact=false}:{draft:LocalDraft;selection:ShareSelection;cardKind:CardKind;compact?:boolean}){
   const records=useSyncExternalStore(subscribeRecords,getRecordsSnapshot,()=>emptyRecords);
   const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[manualCopyUrl,setManualCopyUrl]=useState('');
+  const longRecord=records.find(item=>item.kind===cardKind&&item.lifetime==='long'&&!item.revoked&&item.receipt);
   const projection=useMemo(()=>{try{return projectShare(draft,selection);}catch{return null;}},[draft,selection]);
   const selectedCount=projection?Object.keys(projection.identity).length+projection.modules.reduce((count,section)=>count+section.items.length,0)+projection.assets.length:0;
   function commit(next:ShareRecord[]){writeRecords(next);}
@@ -93,13 +94,33 @@ export function QuickShare({draft,selection,cardKind,compact=false}:{draft:Local
       window.location.assign(shareUrl);
     }catch(error){setStatus(error instanceof Error?error.message:'WhatsApp 分享失败。');setBusy(false);}
   }
+
+  async function copyRevokeCode(){
+    const code=longRecord?.receipt?.revokeToken;if(!code)return;
+    try{await navigator.clipboard.writeText(code);setStatus('长期名片的撤回码已复制，请安全备份。');}
+    catch{setManualCopyUrl(code);setStatus('请手动复制并安全保存撤回码。');}
+  }
+  async function revokeLong(){
+    if(!longRecord?.receipt||!window.confirm('确定撤回长期公开名片吗？链接将无法再打开，但聊天软件可能仍缓存旧预览。'))return;
+    setBusy(true);setStatus('');
+    try{
+      const response=await publicationRequest(`/v1/publications/${encodeURIComponent(longRecord.receipt.publication.publicId)}`,{
+        method:'DELETE',headers:{authorization:`Bearer ${longRecord.receipt.revokeToken}`},
+      });
+      if(!response.ok)throw new Error('撤回失败，请稍后重试。');
+      commit(records.map(item=>item===longRecord?{...item,revoked:true}:item));
+      setStatus('长期链接已撤回。');
+    }catch(error){setStatus(error instanceof Error?error.message:'撤回失败。');}
+    finally{setBusy(false);}
+  }
   async function copyLink(){setBusy(true);setStatus('正在准备分享链接…');setManualCopyUrl('');try{const receipt=await publish();try{await navigator.clipboard.writeText(receipt.publication.url);setStatus('链接已复制，可以粘贴发送。');}catch{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请手动复制。');}}catch(error){setStatus(error instanceof Error?error.message:'无法准备分享链接。');}finally{setBusy(false);}}
   async function shareLink(){setBusy(true);setStatus('正在准备分享链接…');setManualCopyUrl('');try{const receipt=await publish();if(!navigator.share){try{await navigator.clipboard.writeText(receipt.publication.url);setStatus('此浏览器不支持系统分享，链接已复制。');}catch{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请手动复制。');}return;}setStatus('正在打开系统分享面板；选择接收人或关闭面板后会返回此页。');try{await navigator.share({title:draft.identity.name||'Neymi 名片',text:'查看我的数字名片',url:receipt.publication.url});setStatus('已交给系统分享；请在分享面板中选择接收人。');}catch(error){if(error instanceof DOMException&&error.name==='AbortError')setStatus('已取消分享；链接仍可复制。');else{setManualCopyUrl(receipt.publication.url);setStatus('链接已准备好，请点击“分享名片”重试，或复制链接。');}}}catch(error){setStatus(error instanceof Error?error.message:'无法准备分享链接。');}finally{setBusy(false);}}
   async function downloadImage(){if(!projection)return;setBusy(true);setStatus('正在生成名片图片…');try{download(await renderImage(projection),'neymi-card.png');setStatus('名片图片已下载。');}catch{setStatus('图片生成失败，请稍后重试。');}finally{setBusy(false);}}
   return <section className={`quick-share${compact?' quick-share-compact':''}`} aria-label="分享名片">
     {!compact&&<div className="quick-share-summary"><p>已选 {selectedCount} 项 · 普通链接 30 天到期，长期链接约 5 年有效且可更新。分享内容为公开快照，第三方可能缓存。</p></div>}
-    <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLongLink()}>长期链接</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareWhatsApp()}>WhatsApp</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>微信图片 / 下载名片</button></div>
-    {manualCopyUrl&&<label className="quick-share-copy-field">分享链接<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
+    <div className="quick-share-actions"><button type="button" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareLink()}>{busy?'处理中…':'分享名片'}</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLink()}>复制链接</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void copyLongLink()}>长期链接（5年）</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void shareWhatsApp()}>WhatsApp</button><button type="button" className="secondary" disabled={busy||!projection||selectedCount===0} onClick={()=>void downloadImage()}>微信图片 / 下载名片</button></div>
+    {longRecord?.receipt&&<div className="quick-share-long-management"><p>长期链接的撤回码仅保存在此浏览器，清除浏览器数据可能失去撤回权限。请先备份撤回码。</p><button type="button" disabled={busy} onClick={()=>void copyRevokeCode()}>复制撤回码</button><button type="button" disabled={busy} onClick={()=>void revokeLong()}>撤回长期链接</button></div>}
+    {manualCopyUrl&&<label className="quick-share-copy-field">链接或撤回码<input readOnly value={manualCopyUrl} onFocus={event=>event.currentTarget.select()}/></label>}
     {status&&<p role="status">{status}</p>}
   </section>;
 }
