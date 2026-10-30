@@ -29,7 +29,7 @@ jobs:
       - run: npm run typecheck
       # Full-repo lint currently fails in two untouched legacy card components.
       # Verify all files changed by this PR without expanding unrelated behavior.
-      - run: npx eslint src/app/p src/app/layout.tsx src/app/v1 src/modules/publication src/modules/sharing/receive-actions.tsx src/server/router.ts tests/unit/social-preview.test.ts tests/integration/publication.test.ts tests/e2e/quick-share.spec.ts
+      - run: npx eslint src/app/p src/app/revoke src/app/layout.tsx src/app/v1 src/modules/publication src/modules/sharing/receive-actions.tsx src/server/router.ts tests/unit/social-preview.test.ts tests/integration/publication.test.ts tests/e2e/quick-share.spec.ts
       - run: npx vitest run tests/unit/social-preview.test.ts tests/integration/publication.test.ts
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config playwright.quick-share.config.ts
