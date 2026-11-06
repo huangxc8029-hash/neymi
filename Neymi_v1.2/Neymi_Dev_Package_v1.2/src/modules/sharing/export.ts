@@ -41,6 +41,7 @@ export async function renderImage(projection:ShareProjection):Promise<Blob>{
   const p=shareProjectionSchema.parse(projection);
   const canvas=document.createElement('canvas');canvas.width=1500;canvas.height=900;
   const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas unavailable');
+  ctx.beginPath();ctx.roundRect(0,0,1500,900,48);ctx.clip();
   const template=getCardTemplate(p.templateId),gradient=ctx.createLinearGradient(0,0,1500,900);
   gradient.addColorStop(0,template.start);gradient.addColorStop(1,template.end);
   ctx.fillStyle=gradient;ctx.fillRect(0,0,1500,900);

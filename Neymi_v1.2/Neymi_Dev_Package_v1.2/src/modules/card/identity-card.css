@@ -49,6 +49,9 @@
 .identity-card.card-language[data-module-shell="sticker"] .identity-front{background:linear-gradient(90deg,color-mix(in srgb,var(--card-surface),transparent 7%),color-mix(in srgb,var(--card-surface),transparent 35%) 58%,transparent 90%)}
 .identity-card.card-language[data-module-shell] .identity-nameblock{width:80%;padding:0;border:0;background:none;text-align:left}
 .identity-card.card-language[data-module-shell] .identity-modules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-self:stretch;align-content:end;width:100%;max-width:none;flex:none;flex-wrap:initial;gap:1.2cqi;margin-top:auto;padding:0;border:0;overflow:visible;scrollbar-width:none}
+.identity-card.card-language[data-module-shell] .identity-modules{display:flex;justify-content:flex-start;align-items:center;align-self:stretch;gap:1.2cqi;max-width:100%;width:100%}
+.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile{flex:0 1 auto;max-width:25%}
+.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile.identity-more-tile{margin-left:0;min-width:0!important;justify-self:auto}
 .identity-card.card-language[data-module-shell] .identity-tile,.identity-card.card-language[data-module-shell] .identity-modules button.identity-tile{display:flex!important;grid-column:auto!important;grid-row:auto!important;align-items:center;justify-content:center;min-width:0!important;min-height:6cqi!important;padding:1.2cqi!important;border:1px solid color-mix(in srgb,var(--template-ink),transparent 72%)!important;border-radius:8px!important;background:color-mix(in srgb,var(--card-surface),transparent 12%)!important;box-shadow:none!important;color:var(--template-ink)!important;transform:none!important;rotate:none!important;overflow:hidden}
 .identity-card.card-language[data-module-shell] .identity-tile>span:not(.card-social-logos){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .identity-card.card-language[data-module-shell] .identity-tile:nth-child(n){transform:none!important;rotate:none!important}
@@ -125,7 +128,7 @@
 .vip-demo-example .identity-contact-static .identity-contact-value{max-width:100%;font-size:clamp(10px,2.05cqi,15px);line-height:1.2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
 .vip-demo-example .identity-card .card-social-logo svg{display:block;width:2.8cqi;height:2.8cqi;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .vip-demo-example .identity-card .card-social-logo svg .instagram-dot{fill:currentColor;stroke:none}
-.identity-card .card-social-logo img{display:block;width:2.8cqi;height:2.8cqi;object-fit:contain;filter:var(--card-social-filter,brightness(0) invert(1))}
+.identity-card .card-social-logo img{display:block;width:2.8cqi;height:2.8cqi;object-fit:contain}
 .catalog-logo-mark img{display:block;width:100%;height:100%;object-fit:contain}
 .identity-value-heading{display:flex;align-items:center;gap:7px}
 .identity-value-heading>span{font-size:11px;color:var(--template-muted)}
