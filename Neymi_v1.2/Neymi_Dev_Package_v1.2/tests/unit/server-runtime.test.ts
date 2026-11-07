@@ -21,6 +21,13 @@ describe('server runtime loading',()=>{
     expect(response.status).toBe(201);
   });
 
+  it('accepts the public origin forwarded by Vercel ahead of its internal host',async()=>{
+    process.env.NEYMI_SESSION_SECRET='runtime-session-secret-at-least-thirty-two-bytes';
+    const handler=await import('../../src/app/v1/session/route'),origin='https://swtpic.com';
+    const response=await handler.POST(new Request(`${origin}/v1/session`,{method:'POST',headers:{origin,host:'internal.vercel.app','x-forwarded-host':'swtpic.com','x-forwarded-proto':'https'}}));
+    expect(response.status).toBe(201);
+  });
+
   it('exposes a dedicated publication function without loading SQLite',async()=>{
     vi.doMock('node:sqlite',()=>{throw new Error('node:sqlite is unavailable in this function runtime');});
     const handler=await import('../../src/app/v1/publications/route');

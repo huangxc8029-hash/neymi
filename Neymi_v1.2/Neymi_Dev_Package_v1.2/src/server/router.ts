@@ -66,7 +66,7 @@ async function readRawBody(request:Request,maxBytes=64*1024):Promise<string>{
   try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes);}catch{throw invalidRequest('Webhook body must be UTF-8');}
 }
 function originOk(request:Request):boolean{
-  const url=new URL(request.url),host=request.headers.get('host')??request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const url=new URL(request.url),host=request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()??request.headers.get('host');
   let target=url.origin;try{if(host){const protocol=request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()??url.protocol.slice(0,-1);target=new URL(`${protocol}://${host}`).origin;}}catch{return false;}
   const origin=request.headers.get('origin');
   if(origin)return origin===target;
