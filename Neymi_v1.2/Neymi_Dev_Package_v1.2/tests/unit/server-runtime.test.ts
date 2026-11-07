@@ -28,6 +28,13 @@ describe('server runtime loading',()=>{
     expect(response.status).toBe(201);
   });
 
+  it('accepts browser-enforced same-origin requests when the platform hides the public host',async()=>{
+    process.env.NEYMI_SESSION_SECRET='runtime-session-secret-at-least-thirty-two-bytes';
+    const handler=await import('../../src/app/v1/session/route'),origin='https://swtpic.com';
+    const response=await handler.POST(new Request(`${origin}/v1/session`,{method:'POST',headers:{origin,host:'internal.vercel.app','sec-fetch-site':'same-origin'}}));
+    expect(response.status).toBe(201);
+  });
+
   it('exposes a dedicated publication function without loading SQLite',async()=>{
     vi.doMock('node:sqlite',()=>{throw new Error('node:sqlite is unavailable in this function runtime');});
     const handler=await import('../../src/app/v1/publications/route');

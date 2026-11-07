@@ -68,10 +68,10 @@ async function readRawBody(request:Request,maxBytes=64*1024):Promise<string>{
 function originOk(request:Request):boolean{
   const url=new URL(request.url),host=request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()??request.headers.get('host');
   let target=url.origin;try{if(host){const protocol=request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()??url.protocol.slice(0,-1);target=new URL(`${protocol}://${host}`).origin;}}catch{return false;}
-  const origin=request.headers.get('origin');
-  if(origin)return origin===target;
+  const origin=request.headers.get('origin'),productionOrigin=(process.env.NEYMI_PUBLIC_ORIGIN??'https://swtpic.com').trim();
+  if(origin)return origin===target||origin===productionOrigin;
   const referer=request.headers.get('referer'),site=request.headers.get('sec-fetch-site');if(site&&site!=='same-origin'||!referer)return false;
-  try{return new URL(referer).origin===target;}catch{return false;}
+  try{const refererOrigin=new URL(referer).origin;return refererOrigin===target||refererOrigin===productionOrigin;}catch{return false;}
 }
 function failure(error:unknown):Response{
   const issue=error instanceof ApiError?error:error instanceof SyntaxError||error instanceof ZodError?invalidRequest():null;
