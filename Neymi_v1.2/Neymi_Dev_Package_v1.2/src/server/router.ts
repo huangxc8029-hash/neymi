@@ -186,20 +186,20 @@ export async function route(request:Request,segments:string[]):Promise<Response>
     }
     if(path==='messaging/webhook'&&request.method==='POST'){
       const adapter=getFixtureMessagingAdapter(),rawBody=await readRawBody(request),event=adapter.verify(rawBody,request.headers);
-      const accepted=await getMessagingService().acceptEvent('fixture-hmac',event.eventId);
+      const accepted=await (await getMessagingService()).acceptEvent('fixture-hmac',event.eventId);
       return json({accepted:true,...(accepted==='duplicate'?{duplicate:true}:{})},accepted==='duplicate'?200:202);
     }
     if(path==='messaging/handoffs'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');const owner=readSession(request);if(!owner)throw notFound();
       const input=handoffInputSchema.parse(await readJson(request,4096)),origin=new URL(request.url).origin;
-      await getPublicationService(origin).readPublication(input.publicationId);
-      const handoff=await getMessagingService().issueHandoff(input.publicationId);
+      await (await getPublicationService(origin)).readPublication(input.publicationId);
+      const handoff=await (await getMessagingService()).issueHandoff(input.publicationId);
       return json({url:`${origin}/handoff#ticket=${encodeURIComponent(handoff.ticket)}`,expiresAt:handoff.expiresAt},201);
     }
     if(path==='messaging/handoffs/consume'&&request.method==='POST'){
       if(!originOk(request))throw invalidRequest('Invalid origin');const {ticket}=consumeHandoffInputSchema.parse(await readJson(request,4096));
-      const publicationId=await getMessagingService().consumeHandoff(ticket);if(!publicationId)throw notFound();
-      try{await getPublicationService(new URL(request.url).origin).readPublication(publicationId);}catch{throw notFound();}
+      const publicationId=await (await getMessagingService()).consumeHandoff(ticket);if(!publicationId)throw notFound();
+      try{await (await getPublicationService(new URL(request.url).origin)).readPublication(publicationId);}catch{throw notFound();}
       return json({publicationId});
     }
     if(path==='publications'&&request.method==='POST'){
@@ -207,11 +207,11 @@ export async function route(request:Request,segments:string[]):Promise<Response>
       const owner=readSession(request);if(!owner)throw notFound();
       const key=request.headers.get('idempotency-key')??'';
       const input=publicationInputSchema.parse(await readJson(request,8*1024*1024));
-      const service=getPublicationService(new URL(request.url).origin);
+      const service=await getPublicationService(new URL(request.url).origin);
       return json(await service.publishCard(owner,input.projection as never,input.confirmation as never,key),201,{'Cache-Control':'no-store'});
     }
     if(path.startsWith('publications/')&&segments.length===2){
-      const id=segments[1],service=getPublicationService(new URL(request.url).origin);
+      const id=segments[1],service=await getPublicationService(new URL(request.url).origin);
       if(request.method==='GET')return json({projection:await service.readPublication(id)},200,{'Cache-Control':'no-store, max-age=0'});
       if(request.method==='DELETE'){
         if(!originOk(request))throw invalidRequest('Invalid origin');
@@ -245,7 +245,7 @@ export async function route(request:Request,segments:string[]):Promise<Response>
     if(!path.startsWith('jobs'))throw notFound();
     if(!originOk(request)&&request.method!=='GET')throw invalidRequest('Invalid origin');
     const owner=readSession(request);if(!owner)throw notFound();
-    const store=getConfiguredJobStore();
+    const store=await getConfiguredJobStore();
     if(request.method==='POST'&&path==='jobs'){
       const input=jobInputSchema.parse(await readJson(request));
       await authorizeContext(input.context as never);

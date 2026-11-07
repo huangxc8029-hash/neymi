@@ -20,7 +20,7 @@ function PublicCard({projection}:{projection:ShareProjection}){
 
 export default async function PublishedPage({params}:{params:Promise<{publicId:string}>}){
   const {publicId}=await params;let projection:ShareProjection|null=null,message='';
-  try{projection=await getPublicationService('https://neymi.invalid').readPublication(publicId);}
+  try{projection=await (await getPublicationService('https://neymi.invalid')).readPublication(publicId);}
   catch(error){message=error instanceof ApiError&&error.code==='EXPIRED'?'此公开链接已到期。':error instanceof ApiError&&error.code==='NOT_FOUND'?'此公开链接已撤回或不存在。':'公开服务暂不可用。';}
   return <main className="workspace"><header className="site-header"><Link className="wordmark" href="/">neymi<span>.</span></Link><Link className="nav-ai" href="/">返回首页</Link></header>
     {projection?<div className="preview-panel public-preview"><p className="eyebrow">由持有人选择公开</p><PublicCard projection={projection}/><ReceiveActions projection={projection}/></div>:

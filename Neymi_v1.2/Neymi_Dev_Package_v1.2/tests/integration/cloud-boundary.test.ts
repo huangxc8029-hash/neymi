@@ -3,7 +3,7 @@ import {createSession,readSession,sessionCookie} from '../../src/server/session'
 import {JobStore} from '../../src/server/store';
 import {authorizeContext} from '../../src/modules/consent/cloud';
 import {timestamp} from '../fixtures/domain';
-import {SqliteJobStore} from '../../src/server/store';
+import {SqliteJobStore} from '../../src/server/sqlite-job-store';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';

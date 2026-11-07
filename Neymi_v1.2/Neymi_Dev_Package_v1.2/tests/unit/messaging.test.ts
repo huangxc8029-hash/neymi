@@ -4,7 +4,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {describe,expect,it} from 'vitest';
 import {FixtureHmacAdapter,MessagingService} from '../../src/modules/messaging/protocol';
-import {MemoryMessagingStore,SqliteMessagingStore} from '../../src/modules/messaging/store';
+import {MemoryMessagingStore} from '../../src/modules/messaging/store';
+import {SqliteMessagingStore} from '../../src/modules/messaging/sqlite-store';
 
 const secret='fixture-channel-signing-secret-at-least-thirty-two-bytes';
 const timestamp=1_798_704_000_000;

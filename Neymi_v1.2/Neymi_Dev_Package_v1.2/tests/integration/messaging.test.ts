@@ -25,7 +25,7 @@ beforeAll(async()=>{
   const created=await route(new Request(`${origin}/v1/publications`,{method:'POST',headers:{origin,cookie,'content-type':'application/json','idempotency-key':'m'.repeat(40)},body:JSON.stringify({projection,confirmation})}),['publications']);
   publicationId=(await created.json()).publication.publicId;
 });
-afterAll(()=>{closeMessagingRuntime();getConfiguredPublicationStore().close();for(const key of envKeys){if(previous[key]===undefined)delete process.env[key];else process.env[key]=previous[key];}if(directory)rmSync(directory,{recursive:true,force:true});});
+afterAll(async()=>{closeMessagingRuntime();const store=await getConfiguredPublicationStore();if('close'in store&&typeof store.close==='function')store.close();for(const key of envKeys){if(previous[key]===undefined)delete process.env[key];else process.env[key]=previous[key];}if(directory)rmSync(directory,{recursive:true,force:true});});
 
 describe('messaging API boundary',()=>{
   it('accepts a valid signed fixture webhook once, with no body echoed or stored in response',async()=>{
